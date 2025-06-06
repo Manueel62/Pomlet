@@ -143,34 +143,26 @@ class PomodoroApp(QWidget):
 
     def _build_add_tab(self):
         layout = QVBoxLayout(self.tab3)
-        add_layout = QHBoxLayout()
 
         self.subject_dropdown = QComboBox()
         self.subject_dropdown.addItems(self.subjects[:])
-        self.subject_dropdown.setFixedWidth(200)
 
-        self.add_flashcard_btn = QPushButton("+")
+        self.add_flashcard_btn = QPushButton("Add Flashcard")
         self.add_flashcard_btn.setToolTip("Add a new flashcard")
-        self.add_flashcard_btn.setFixedSize(40, 30)
         self.add_flashcard_btn.clicked.connect(self._on_add_flashcard_clicked)
 
-        add_layout.addWidget(self.subject_dropdown)
-        add_layout.addWidget(self.add_flashcard_btn)
-        add_layout.addStretch()
-
-        input_layout = QVBoxLayout()
         self.question_input = QTextEdit()
         self.question_input.setFixedHeight(100)
         self.add_info_label = QLabel("")
 
-        input_layout.addLayout(add_layout)
-        input_layout.addWidget(self.question_input)
-        input_layout.addWidget(self.add_info_label)
-
-        shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)  # Ctrl+Q shortcut
+        shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
         shortcut.activated.connect(self._on_add_flashcard_clicked)
 
-        layout.addLayout(input_layout)
+        layout.addWidget(self.subject_dropdown)
+        layout.addWidget(self.question_input)
+        layout.addWidget(self.add_info_label)
+        layout.addStretch()
+        layout.addWidget(self.add_flashcard_btn)
 
     def _build_ui(self, parent=None):
         layout = QVBoxLayout(parent)
@@ -244,13 +236,13 @@ class PomodoroApp(QWidget):
         # Title label for the subject
         self.subject_label = QLabel()
         self.subject_label.setText(f"Course: {self._questions_manager.get_subject()}")
+        self.subject_label.setWordWrap(True)
         self.subject_label.setAlignment(Qt.AlignCenter)
         self.subject_label.setStyleSheet("""
-            font-size: 20px;
+            font-size: 14px;
             font-weight: bold;
             margin: 15px;
         """)
-        layout.addWidget(self.subject_label)
 
         # Flashcard count label
         self.question_label = QLabel()
@@ -261,10 +253,8 @@ class PomodoroApp(QWidget):
         self.question_label.setAlignment(Qt.AlignCenter)
         self.question_label.setStyleSheet("""
             font-size: 16px;
-            font-weight: bold;
             margin: 10px;
         """)
-        layout.addWidget(self.question_label)
 
         # Buttons layout (review controls)
         btns = QHBoxLayout()
@@ -279,6 +269,11 @@ class PomodoroApp(QWidget):
         btns.addWidget(self.ok_btn)
         btns.addWidget(self.start_review_btn)
         btns.addWidget(self.wrong_btn)
+
+        layout.addWidget(self.subject_label)
+        layout.addStretch()
+        layout.addWidget(self.question_label)
+        layout.addStretch()
         layout.addLayout(btns)
 
     def on_subject_changed(self):
@@ -341,7 +336,6 @@ class PomodoroApp(QWidget):
 
         self.question_label.setText(q["question"])
         self.subject_label.setText(q["subject"])
-
 
     def _on_cancel_clicked(self):
         self._questions_manager.wrong()
