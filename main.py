@@ -1,0 +1,13 @@
+import sys
+from PyQt5.QtWidgets import (
+    QApplication,
+)
+
+from src.pomodoro import PomodoroApp
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = PomodoroApp()
+    window.show()
+    sys.exit(app.exec_())
