@@ -264,7 +264,7 @@ class PomodoroApp(QWidget):
 
         self.ok_btn.clicked.connect(self._on_ok_clicked)
         self.start_review_btn.clicked.connect(self._on_start_review)
-        self.wrong_btn.clicked.connect(self._on_cancel_clicked)
+        self.wrong_btn.clicked.connect(self._on_wrong_clicked)
 
         btns.addWidget(self.ok_btn)
         btns.addWidget(self.start_review_btn)
@@ -275,6 +275,17 @@ class PomodoroApp(QWidget):
         layout.addWidget(self.question_label)
         layout.addStretch()
         layout.addLayout(btns)
+
+        shortcut_correct = QShortcut(QKeySequence("Left"), self)
+        shortcut_incorrect = QShortcut(QKeySequence("Right"), self)
+        shortcut_correct.activated.connect(
+            lambda: None if not self.ok_btn.isEnabled() else self._on_ok_clicked()
+        )
+        shortcut_incorrect.activated.connect(
+            lambda: None
+            if not self.wrong_btn.isEnabled()
+            else self._on_wrong_clicked()
+        )
 
     def on_subject_changed(self):
         subject = self.subject_box.currentText()
@@ -337,7 +348,7 @@ class PomodoroApp(QWidget):
         self.question_label.setText(q["question"])
         self.subject_label.setText(q["subject"])
 
-    def _on_cancel_clicked(self):
+    def _on_wrong_clicked(self):
         self._questions_manager.wrong()
         q = self._questions_manager.get_next_to_repeat()
 
@@ -349,6 +360,7 @@ class PomodoroApp(QWidget):
 
         self.question_label.setText(q["question"])
         self.subject_label.setText(q["subject"])
+
 
     def _make_slider(self, label, default, mn, mx, slot):
         layout = QHBoxLayout()
