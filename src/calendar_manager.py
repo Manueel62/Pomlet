@@ -5,7 +5,7 @@ import subprocess
 def create_calendar_event(title, start_time, end_time):
     """Add an event to Apple Calendar (macOS only)."""
     if platform.system() != "Darwin":
-        return  # Skip if not on macOS
+        return  # skip if not on macOS
 
     applescript = (
         f"""

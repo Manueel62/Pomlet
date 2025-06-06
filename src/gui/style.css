@@ -1,0 +1,73 @@
+QSlider::groove:horizontal {
+    border: 1px solid #bbb;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+}
+
+QSlider::handle:horizontal {
+    background: #666;
+    border: 1px solid #555;
+    width: 14px;
+    height: 14px;
+    margin: -4px 0;
+    border-radius: 5px;
+}
+
+QPushButton {
+    background-color: #4CAF50;       /* Primary green */
+    color: white;                    /* Text color */
+    border: none;                    /* Remove native border */
+    padding: 8px 16px;               /* Button padding */
+    text-align: center;             
+    text-decoration: none;
+    font-size: 14px;
+    border-radius: 4px;              /* Slightly rounded corners */
+}
+
+QPushButton:hover {
+    background-color: #45a049;       /* Darker green on hover */
+}
+
+QPushButton:pressed {
+    background-color: #388E3C;       /* Even darker on click */
+}
+
+QPushButton:disabled {
+    background-color: #cccccc;
+    color: #666666;
+}
+
+QComboBox {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 4px;
+}
+
+QComboBox:hover {
+    background-color: #45a049;
+}
+
+QComboBox:pressed,
+QComboBox:on {
+    background-color: #388E3C;
+}
+
+QComboBox:disabled {
+    background-color: #cccccc;
+    color: #666666;
+}
+
+/* Drop-down arrow */
+QComboBox::drop-down {
+    width: 20px;
+    border-left: 1px solid #388E3C;
+}
+
+QComboBox::down-arrow {
+    width: 10px;
+    height: 10px;
+}

@@ -19,16 +19,13 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
-    name='Pomodoro',
+    exclude_binaries=True,
+    name='Pomlet',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -37,9 +34,18 @@ exe = EXE(
     entitlements_file=None,
     icon=['icon.png'],
 )
-app = BUNDLE(
+coll = COLLECT(
     exe,
-    name='Pomodoro.app',
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='Pomlet',
+)
+app = BUNDLE(
+    coll,
+    name='Pomlet.app',
     icon='icon.png',
     bundle_identifier=None,
 )

@@ -1,41 +1,44 @@
 import json
+from pathlib import Path
 import shutil
 from datetime import datetime, timedelta
 from random import shuffle
+from typing import Any, Dict
 
-from src.config import CONFIG_FILE
-
-QUESTIONPATH = CONFIG_FILE.parent.joinpath("questions.json")
+from src.config import get_config_path
 
 
 class QuestionManager:
     def __init__(self) -> None:
         self._questions = self._load_questions()
-        self.questions_to_repeat = self.to_repeat()
-        self.current_idx = None
+        self._questions_to_repeat = self._get_flashcards_to_repeat()
 
+    def _get_question_path(self):
+        return get_config_path().parent.joinpath("questions.json")
+    
     def _load_questions(self):
-        if not QUESTIONPATH.exists():
-            with open(QUESTIONPATH, "w", encoding="utf-8") as f:
+        question_path: Path = self._get_question_path()
+        if not question_path.exists():
+            with open(question_path, "w", encoding="utf-8") as f:
                 json.dump([], f)
 
-        with open(QUESTIONPATH, encoding="utf-8") as f:
+        with open(question_path, encoding="utf-8") as f:
             return json.load(f)
 
     def save_questions(self):
-        backups_dir = QUESTIONPATH.parent.joinpath("backups")
-        backups_dir.mkdir(exist_ok=True)
-        shutil.copyfile(QUESTIONPATH, backups_dir.joinpath(datetime.now().isoformat()))
+        question_path: Path = self._get_question_path()
 
-        with open(QUESTIONPATH, "w", encoding="utf-8") as f:
+        backups_dir = question_path.parent.joinpath("backups")
+        backups_dir.mkdir(exist_ok=True)
+        shutil.copyfile(
+            question_path,
+            backups_dir.joinpath(datetime.now().isoformat()),
+        )
+
+        with open(question_path, "w", encoding="utf-8") as f:
             return json.dump(self._questions, f)
 
-    def get_subject(self):
-        if self.current_idx is None:
-            return ""
-        return self.questions_to_repeat[self.current_idx]["subject"]
-
-    def to_repeat(self):
+    def _get_flashcards_to_repeat(self):
         qs = []
         for q in self._questions:
             if (
@@ -45,21 +48,22 @@ class QuestionManager:
                 qs.append(q)
 
         shuffle(qs)
-        return qs
+
+        for q in qs:
+            yield q
 
     def count(self):
-        return len([x for x in self.to_repeat()])
+        return len([x for x in self._get_flashcards_to_repeat()])
 
-    def correct(self):
-        if self.current_idx is None:
-            raise ValueError
-
-        for q in self._questions:
-            if q["id"] == self.questions_to_repeat[self.current_idx]["id"]:
-                q["last_repeated"] = datetime.now().isoformat()
-                q["repeated"] += 1
-                next_repeat = self._get_next_repeat(q["repeated"], q["last_repeated"])
-                q["next_repeat"] = (
+    def correct(self, question: Dict[str, Any]) -> None:
+        for stored_question in self._questions:
+            if stored_question["id"] == question["id"]:
+                stored_question["last_repeated"] = datetime.now().isoformat()
+                stored_question["repeated"] += 1
+                next_repeat = self._get_next_repeat(
+                    stored_question["repeated"], stored_question["last_repeated"]
+                )
+                stored_question["next_repeat"] = (
                     next_repeat.isoformat() if next_repeat is not None else next_repeat
                 )
 
@@ -110,23 +114,16 @@ class QuestionManager:
 
         return datetime.fromisoformat(last_repeated) + delta
 
-    def wrong(self):
-        if self.current_idx is None:
-            raise ValueError
-
-        for q in self._questions:
-            if q["id"] == self.questions_to_repeat[self.current_idx]["id"]:
-                q["last_repeated"] = datetime.now().isoformat()
-                q["repeated"] = 0
-                q["next_repeat"] = datetime.now().isoformat()
+    def wrong(self, question: Dict[str, Any]) -> None:
+        for stored_question in self._questions:
+            if stored_question["id"] == question["id"]:
+                stored_question["last_repeated"] = datetime.now().isoformat()
+                stored_question["repeated"] = 0
+                stored_question["next_repeat"] = datetime.now().isoformat()
 
     def get_next_to_repeat(self):
-        if self.current_idx is None:
-            self.current_idx = 0
-        elif self.current_idx < len(self.questions_to_repeat):
-            self.current_idx += 1
+        return next(self._questions_to_repeat, None)
 
-        if self.current_idx >= len(self.questions_to_repeat):
-            return None
-
-        return self.questions_to_repeat[self.current_idx]
+    @property
+    def questions_to_repeat(self):
+        return self._questions_to_repeat
