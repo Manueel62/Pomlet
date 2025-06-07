@@ -72,9 +72,6 @@ class TimerTab(QWidget):
         self._default_work: int = default_work
         self._default_break: int = default_break
 
-        # with open("src/gui/style.css") as f:
-        #     self.setStyleSheet(f.read())
-
         self._questions_manager: QuestionManager = questions_manager
         self._tray: QSystemTrayIcon = tray
         self._subjects: List[str] = get_subjects()
@@ -114,6 +111,9 @@ class TimerTab(QWidget):
         self._subject_box.setFixedHeight(30)
         self._subject_box.setFixedWidth(130)
         self._subject_box.addItems(self._subjects)
+        if self._subject_box.count() == 0:
+            self._rm_btn.setEnabled(False)
+
         self._subject_box.currentIndexChanged.connect(self.on_subject_changed)
 
         if len(self._subjects) > 0:
@@ -179,17 +179,26 @@ class TimerTab(QWidget):
         reply: QMessageBox.StandardButton = QMessageBox.question(
             self,
             "Removing Subject",
-            f"Are you sure you want to delete '{self._subject_box.currentText()}'?",
+            f"Are you sure you want to delete '{self._subject_box.currentText()}' and all its flashcards?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
 
+        logging.debug(f"Removing subject: {self._subject_box.currentText()}")
         if reply is QMessageBox.StandardButton.No:
+            logging.debug("Subject not removed. User cancelled.")
             return
 
         remove_subject(self._subject_box.currentText())
+        self._questions_manager.remove_all_by_subject(self._subject_box.currentText())
+
         self._subject_box.removeItem(self._subject_box.currentIndex())
-        self.subjects_updated.emit(None)
+        if self._subject_box.count() > 0:
+            self._subject_box.setCurrentIndex(0)
+        else:
+            self._rm_btn.setEnabled(False)
+
+        self.subjects_updated.emit(self._subject_box.currentText())
 
     def _add_subject(self):
         subject_name: str
@@ -199,14 +208,29 @@ class TimerTab(QWidget):
         subject_name = subject_name.strip()
 
         if ok and subject_name:
+            if subject_name.strip() == "":
+                QMessageBox.warning(
+                    self, "Invalid Subject Name", "Subject name cannot be empty!"
+                )
+                return
+
             add_subject(subject_name)
             self._subject_box.addItem(subject_name)  # timer tab
             self._subject_box.setCurrentText(subject_name)
 
             # update add tab box
             self.subjects_updated.emit(subject_name)
+            self._rm_btn.setEnabled(True)
 
     def start(self):
+        logger.debug("Starting timer")
+        if self._subject_box.currentText() == "":
+            QMessageBox.warning(
+                self, "No Subject Selected", "Please create a subject first!"
+            )
+            logger.debug("No subject selected. Aborting.")
+            return
+        
         if (
             self._work_done
             # and self._start_btn.text().lower().strip() == "▶ start break"
@@ -304,6 +328,7 @@ class TimerTab(QWidget):
         self._session_end_time = None
 
     def on_subject_changed(self):
+        logger.debug("Subject changed in TimerTab")
         subject: str = self._subject_box.currentText()
         self.subjects_updated.emit(subject)
 

@@ -16,23 +16,36 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 import sys
-from dotenv import load_dotenv
 
-from PySide6.QtWidgets import QApplication
 import dotenv
 import qdarktheme
+from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
-from src.gui.pomodoro import PomodoroApp
+from PySide6.QtWidgets import QApplication
+
+from src.gui.pomodoro import PomletApp
 
 
+def setup_logger():
+    logging.basicConfig(
+        level=logging.DEBUG,
+        # filemode="w",
+        # filename="pomlet.log",
+        format="%(asctime)s %(filename)-15s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 if __name__ == "__main__":
-    print(dotenv.find_dotenv())
+    setup_logger()
+    logger = logging.getLogger(__name__)
+    logger.debug("Loaded .env file at: %s", dotenv.find_dotenv())
     load_dotenv()
+
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
-    window = PomodoroApp()
+    window = PomletApp()
     qdarktheme.setup_theme("auto")
     window.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec())    

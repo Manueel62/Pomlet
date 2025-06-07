@@ -17,12 +17,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
+from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 def get_config_path() -> Path:
-    print(os.getenv("DEV"))
     if os.getenv("DEV") == "True":
         return Path().joinpath("config.json")
 
@@ -75,6 +78,8 @@ def save_config(work_duration, break_duration, session_types):
 
 
 def add_subject(subject: str):
+    logger.debug("Adding subject: %s", subject)
+
     config = _load_config()
     config[subject] = {
         "work_duration": 25,
@@ -87,9 +92,11 @@ def add_subject(subject: str):
 def remove_subject(subject: str):
     config = _load_config()
     if config.get(subject) is None:
+        logger.warning(f"Subject {subject} not found")
         return
 
-    config.pop(subject)
+    subject_popped: Dict[str, Any] = config.pop(subject)
+    logger.debug(f"Subject {subject} removed. {subject_popped}")
     _write_config(config)
 
 
@@ -100,13 +107,15 @@ def get_subjects():
     return list(config.keys())
 
 
-def _write_config(config: dict):
+def _write_config(config: Dict[str, Any]):
+    logger.debug("Writing config: %s", config)
     with open(get_config_path(), "w", encoding="utf-8") as f:
         json.dump(config, f)
 
 
 def _load_config():
     config_file: Path = get_config_path()
+    logger.debug("Loading config from %s", config_file)
     if not config_file.exists():
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump({}, f)

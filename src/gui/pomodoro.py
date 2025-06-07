@@ -19,16 +19,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
-from src.gui.tabs.list_flashcard import ListTab
 from src.config import get_subjects, load_config
 from src.gui.tabs.add_flashcard import AddTab
+from src.gui.tabs.list_flashcard import ListTab
 from src.gui.tabs.review_flashcard import ReviewTab
 from src.gui.tabs.timer.timer import TimerTab
 from src.gui.tray import Tray
 from src.questions_manager import QuestionManager
 
 
-class PomodoroApp(QWidget):
+class PomletApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Pomlet")
@@ -55,6 +55,7 @@ class PomodoroApp(QWidget):
 
     def _connect(self):
         self._timer_tab.subjects_updated.connect(self._add_tab.on_subjects_updated)
+        self._timer_tab.subjects_updated.connect(self._list_tab.refresh)
         self._add_tab.flashcard_added.connect(self._review_tab.on_flashcard_added)
 
         self._timer_tab.tick.connect(self._tray.update)

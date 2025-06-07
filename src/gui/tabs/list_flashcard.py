@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Any, Dict, Optional
+from venv import logger
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -213,6 +214,8 @@ class ListTab(QWidget):
 
     def refresh(self):
         """Rebuild the tree from current questions."""
+        logger.debug("Refreshing ListTab tree...")
+
         self._tree.clear()
         grouped = self._questions_manager.get_all_grouped_by_subject()
 

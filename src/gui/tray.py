@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,8 @@ from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemT
 
 import src.gui.assets  # tray icon
 
+logger = logging.getLogger(__name__)
+
 
 class Tray(QSystemTrayIcon):
     start_signal = Signal()
@@ -34,7 +37,8 @@ class Tray(QSystemTrayIcon):
 
     def __init__(self):
         super().__init__()
-        print(Path().absolute())
+
+        logger.debug("Tray path: %s", Path().absolute())
         self._initial_icon: QIcon = QIcon(":/tray_icon.png")
         self._menu: QMenu = QMenu()
 
