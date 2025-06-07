@@ -56,27 +56,34 @@ class QuestionManager:
         return len([x for x in self._get_flashcards_to_repeat()])
 
     def correct(self, question: Dict[str, Any]) -> None:
-        for stored_question in self._questions:
-            if stored_question["id"] == question["id"]:
-                stored_question["last_repeated"] = datetime.now().isoformat()
-                stored_question["repeated"] += 1
-                next_repeat = self._get_next_repeat(
-                    stored_question["repeated"], stored_question["last_repeated"]
-                )
-                stored_question["next_repeat"] = (
-                    next_repeat.isoformat() if next_repeat is not None else next_repeat
-                )
+        stored_question = self.find_question(question)
+        stored_question["last_repeated"] = datetime.now().isoformat()
+        stored_question["repeated"] += 1
+        next_repeat = self._get_next_repeat(
+            stored_question["repeated"], stored_question["last_repeated"]
+        )
+        stored_question["next_repeat"] = (
+            next_repeat.isoformat() if next_repeat is not None else next_repeat
+        )
+        
+        self.save_questions()
+
+
+    def modify(self, question: Dict[str, Any]) -> None:
+        stored_question = self.find_question(question)
+        stored_question["question"] = question["question"]
+        self.save_questions()
 
     def _id(self):
         if len(self._questions) == 0:
             return 0
         return max([x["id"] for x in self._questions]) + 1
 
-    def add_question(self, question, subject):
+    def add_question(self, question_text: str, subject: str) -> Dict[str, Any] | None:
         now = datetime.now().isoformat()
         question = {
             "id": self._id(),
-            "question": question,
+            "question": question_text,
             "last_repeated": now,
             "created": now,
             "repeated": 0,
@@ -91,6 +98,11 @@ class QuestionManager:
 
         question["next_repeat"] = next_repeat.isoformat()
         self._questions.append(question)
+        self.save_questions()
+
+        # reset generator of questions to be repeated
+        self.reset()
+
         return question
 
     def _get_next_repeat(self, times, last_repeated):
@@ -115,14 +127,24 @@ class QuestionManager:
         return datetime.fromisoformat(last_repeated) + delta
 
     def wrong(self, question: Dict[str, Any]) -> None:
+        stored_question = self.find_question(question)
+        stored_question["last_repeated"] = datetime.now().isoformat()
+        stored_question["repeated"] = 0
+        stored_question["next_repeat"] = (datetime.now() + timedelta(hours=1)).isoformat()
+        self.save_questions()
+
+    def find_question(self, question: Dict[str, Any]):
         for stored_question in self._questions:
             if stored_question["id"] == question["id"]:
-                stored_question["last_repeated"] = datetime.now().isoformat()
-                stored_question["repeated"] = 0
-                stored_question["next_repeat"] = datetime.now().isoformat()
-
+                return stored_question
+        
+        raise ValueError("Question not found")
+            
     def get_next_to_repeat(self):
         return next(self._questions_to_repeat, None)
+
+    def reset(self):
+        self._questions_to_repeat = self._get_flashcards_to_repeat()
 
     @property
     def questions_to_repeat(self):

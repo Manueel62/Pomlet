@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 def get_config_path() -> Path:
+    print(os.getenv("DEV"))
     if os.getenv("DEV") == "True":
         return Path().joinpath("config.json")
 
