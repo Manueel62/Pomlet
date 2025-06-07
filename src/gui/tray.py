@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import subprocess
 import sys
 from PySide6.QtCore import QPoint, QSize, Qt, Signal
@@ -10,7 +12,10 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon,
 )
 
-
+def resource_path(relative_path: str) -> str:
+    """Get absolute path to resource, works for dev and PyInstaller"""
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 class Tray(QSystemTrayIcon):
     start_signal = Signal()
@@ -19,7 +24,8 @@ class Tray(QSystemTrayIcon):
 
     def __init__(self):
         super().__init__()
-        self._initial_icon: QIcon = QIcon("assets/tray_icon.png")
+        print(Path().absolute())
+        self._initial_icon: QIcon = QIcon(resource_path("assets/tray_icon.png"))
         self._menu: QMenu = QMenu()
 
         # actions

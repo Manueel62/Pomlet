@@ -1,8 +1,8 @@
-from copy import copy
 import json
-from pathlib import Path
 import shutil
+from copy import copy
 from datetime import datetime, timedelta
+from pathlib import Path
 from random import shuffle
 from typing import Any, Dict, List
 
@@ -13,10 +13,11 @@ class QuestionManager:
     def __init__(self) -> None:
         self._questions = self._load_questions()
         self._questions_to_repeat = self._get_flashcards_to_repeat()
+        self._operations = 0
 
     def _get_question_path(self):
         return get_config_path().parent.joinpath("questions.json")
-    
+
     def _load_questions(self):
         question_path: Path = self._get_question_path()
         if not question_path.exists():
@@ -26,15 +27,38 @@ class QuestionManager:
         with open(question_path, encoding="utf-8") as f:
             return json.load(f)
 
-    def save_questions(self):
+    def _clean_backups(self):
         question_path: Path = self._get_question_path()
+        backups_dir: Path = question_path.parent.joinpath("backups")
+        creations: List[Path] = list(backups_dir.iterdir())
+        # print("MAX ",  max(map(lambda x: x.stem, creations)))
+        # print("MIN ",  min(map(lambda x: x.stem, creations)))
 
+        # ascending
+        indexes: List[int] = sorted(
+            list(range(len(creations))),
+            key=lambda x: datetime.fromisoformat(creations[x].stem),
+        )
+
+        # keep last 10 backups
+        for i in indexes[:-10]:
+            creations[i].unlink()
+
+        self._operations = 0
+
+    def save_questions(self):
+        if self._operations > 50:
+            self._clean_backups()
+
+        question_path: Path = self._get_question_path()
         backups_dir = question_path.parent.joinpath("backups")
         backups_dir.mkdir(exist_ok=True)
         shutil.copyfile(
             question_path,
             backups_dir.joinpath(datetime.now().isoformat()),
         )
+
+        self._operations += 1
 
         with open(question_path, "w", encoding="utf-8") as f:
             return json.dump(self._questions, f)
@@ -66,9 +90,8 @@ class QuestionManager:
         stored_question["next_repeat"] = (
             next_repeat.isoformat() if next_repeat is not None else next_repeat
         )
-        
-        self.save_questions()
 
+        self.save_questions()
 
     def modify(self, question: Dict[str, Any]) -> None:
         stored_question = self.find_question(question)
@@ -131,16 +154,18 @@ class QuestionManager:
         stored_question = self.find_question(question)
         stored_question["last_repeated"] = datetime.now().isoformat()
         stored_question["repeated"] = 0
-        stored_question["next_repeat"] = (datetime.now() + timedelta(hours=1)).isoformat()
+        stored_question["next_repeat"] = (
+            datetime.now() + timedelta(hours=1)
+        ).isoformat()
         self.save_questions()
 
     def find_question(self, question: Dict[str, Any]):
         for stored_question in self._questions:
             if stored_question["id"] == question["id"]:
                 return stored_question
-        
+
         raise ValueError("Question not found")
-            
+
     def get_next_to_repeat(self):
         return next(self._questions_to_repeat, None)
 
@@ -162,15 +187,15 @@ class QuestionManager:
         for question in self._questions:
             if question["id"] == id:
                 return copy(question)
-            
+
     def remove(self, question: Dict[str, Any]):
         question = self.find_question(question)
         if question is None:
             return
-        
+
         self._questions.remove(question)
         self.save_questions()
-            
+
     @property
     def questions_to_repeat(self):
         return self._questions_to_repeat
