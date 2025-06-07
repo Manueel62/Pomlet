@@ -1,6 +1,7 @@
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
+from src.gui.tabs.list_flashcard import ListTab
 from src.config import get_subjects, load_config
 from src.gui.tabs.add_flashcard import AddTab
 from src.gui.tabs.review_flashcard import ReviewTab
@@ -22,7 +23,7 @@ class PomodoroApp(QWidget):
         self._to_repeat = self._questions_manager._questions_to_repeat
         self._add_tab: AddTab = AddTab(self._questions_manager)
         self._review_tab: ReviewTab = ReviewTab(self._questions_manager)
-
+        self._list_tab: ListTab = ListTab(self._questions_manager)
         default_work, default_break = load_config(None)
         self._timer_tab: TimerTab = TimerTab(
             self._questions_manager, self._tray, default_work, default_break
@@ -43,6 +44,10 @@ class PomodoroApp(QWidget):
         self._tray.pause_signal.connect(self._timer_tab.toggle_pause)
         self._tray.stop_signal.connect(self._timer_tab.stop)
 
+        self._add_tab.flashcard_added.connect(self._list_tab.refresh)
+        self._review_tab.flashcard_modified.connect(self._list_tab.refresh)
+        self._add_tab.flashcard_added.connect(self._list_tab.refresh)
+
     def _build_tabs(self):
         self.setStyleSheet("""
         QPushButton {
@@ -53,6 +58,7 @@ class PomodoroApp(QWidget):
         self.tabs.addTab(self._timer_tab, "Timer")
         self.tabs.addTab(self._review_tab, "Review")
         self.tabs.addTab(self._add_tab, "Add")
+        self.tabs.addTab(self._list_tab, "List")
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.tabs)

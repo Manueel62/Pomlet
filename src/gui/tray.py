@@ -19,7 +19,7 @@ class Tray(QSystemTrayIcon):
 
     def __init__(self):
         super().__init__()
-        self._initial_icon: QIcon = QIcon("icon.png")
+        self._initial_icon: QIcon = QIcon("assets/tray_icon.png")
         self._menu: QMenu = QMenu()
 
         # actions
@@ -39,7 +39,7 @@ class Tray(QSystemTrayIcon):
             """
             <b>Pomlet</b><br>
             A simple Pomodoro timer for your studies.<br><br>
-            <b>Version:</b> 1.0.0<br>
+            <b>Version:</b> 0.0.3<br>
             <b>Author:</b> Manueel62 <br>
             <b>Website:</b> <a href='https://github.com/manueel62/pomlet'>https://github.com/manueel62/pomlet</a><br><br>
             © 2025 Manueel62. All rights reserved.

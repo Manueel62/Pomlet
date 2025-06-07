@@ -12,3 +12,4 @@ wheels/
 questions.json
 .env
 backups/
+config.json

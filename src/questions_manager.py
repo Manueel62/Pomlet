@@ -1,9 +1,10 @@
+from copy import copy
 import json
 from pathlib import Path
 import shutil
 from datetime import datetime, timedelta
 from random import shuffle
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from src.config import get_config_path
 
@@ -146,6 +147,30 @@ class QuestionManager:
     def reset(self):
         self._questions_to_repeat = self._get_flashcards_to_repeat()
 
+    def get_all_grouped_by_subject(self):
+        grouped_questions: Dict[str, List[Dict[str, Any]]] = {}
+
+        for question in self._questions:
+            if question["subject"] not in grouped_questions:
+                grouped_questions[question["subject"]] = []
+
+            grouped_questions[question["subject"]].append(question)
+
+        return grouped_questions
+
+    def find_by_id(self, id: int):
+        for question in self._questions:
+            if question["id"] == id:
+                return copy(question)
+            
+    def remove(self, question: Dict[str, Any]):
+        question = self.find_question(question)
+        if question is None:
+            return
+        
+        self._questions.remove(question)
+        self.save_questions()
+            
     @property
     def questions_to_repeat(self):
         return self._questions_to_repeat
