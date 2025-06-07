@@ -55,7 +55,7 @@ class QuestionManager:
         # ascending
         indexes: List[int] = sorted(
             list(range(len(creations))),
-            key=lambda x: datetime.fromisoformat(creations[x].stem),
+            key=lambda x: datetime.fromisoformat(self._filename_to_isoformat(creations[x].stem)),
         )
 
         # keep last 10 backups
@@ -64,6 +64,12 @@ class QuestionManager:
 
         self._operations = 0
 
+    def _filename_to_isoformat(self, filename: str):
+        return filename.replace("_", ":")
+
+    def _isoformat_to_filename(self, isoformat: str):
+        return isoformat.replace(":", "_")
+    
     def save_questions(self):
         if self._operations > 50:
             self._clean_backups()
@@ -73,7 +79,7 @@ class QuestionManager:
         backups_dir.mkdir(exist_ok=True)
         shutil.copyfile(
             question_path,
-            backups_dir.joinpath(datetime.now().isoformat()),
+            backups_dir.joinpath(self._isoformat_to_filename(datetime.now().isoformat())),
         )
 
         self._operations += 1

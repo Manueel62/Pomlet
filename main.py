@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 import dotenv
 import qdarktheme
+from PySide6.QtGui import QIcon
 from src.gui.pomodoro import PomodoroApp
 
 
@@ -30,6 +31,7 @@ if __name__ == "__main__":
     print(dotenv.find_dotenv())
     load_dotenv()
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("icon.png"))
     window = PomodoroApp()
     qdarktheme.setup_theme("auto")
     window.show()
