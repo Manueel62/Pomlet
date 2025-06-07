@@ -8,11 +8,11 @@
 
 | Add Flashcard | List All Flashcards | Review Flashcards |
 |:-------------:|:------------------:|:------------------:|
-| ![Add](examples/Add.png) | ![List](examples/List.png) | ![Review](examples/Review.png) |
+| ![Add](assets/examples/Add.png) | ![List](assets/examples/List.png) | ![Review](assets/examples/Review.png) |
 
 | Timer | Light OS Appearance |
 |:-----:|:-------------------:|
-| ![Timer](examples/Timer.png) | ![Tray](examples/White.png) |
+| ![Timer](assets/examples/Timer.png) | ![Tray](assets/examples/White.png) |
 
 ---
 
