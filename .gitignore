@@ -11,3 +11,7 @@ wheels/
 **/.DS_Store
 questions.json
 .env
+backups/
+config.json
+build.sh
+utils
