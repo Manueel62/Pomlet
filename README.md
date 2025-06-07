@@ -36,17 +36,32 @@
 
 ## 🚀 Getting Started
 
-### 📦 Installation
+---
 
-The **release version** of Pomlet is simply the latest build created using [PyInstaller](https://pyinstaller.org/).  
-This generates a standalone desktop application that can be run without installing Python or dependencies.
+## 📦 Releases
 
-To build it yourself:
+The **release version** of Pomlet is simply the latest build created using [PyInstaller](https://pyinstaller.org/).
 
-```bash
-uv sync
-uv run python -m PyInstaller --icon=icon.png --windowed --name=Pomlet main.py --noconfirm
-```
+> ⚠️ **Notice**  
+> If you download Pomlet from the releases section, macOS may flag it as **unverified software** because the app is **not signed or notarized** by Apple.  
+> This is expected.
+
+You have two options:
+
+1. **Allow the app manually:**
+
+   Go to:  
+   `System Settings → Privacy & Security`  
+   Then click:  
+   **“Open Anyway”** next to the *Pomlet was blocked* message.
+
+2. **Build Pomlet from source:**  
+   To avoid the warning, you can clone this repo and build it yourself with PyInstaller:
+
+   ```bash
+    $ uv sync
+    $ .venv/bin/pyside6-rcc assets/assets.qrc -o src/gui/assets.py
+    $ uv run python -m PyInstaller --icon=icon.png --windowed --name=Pomlet main.py --noconfirm
 
 This bundles everything into a single executable in the `dist/` folder. You can then distribute or run `Pomlet` directly.
 
