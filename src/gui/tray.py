@@ -1,21 +1,31 @@
-import os
-from pathlib import Path
+"""
+Pomlet - A simple Pomodoro timer for your studies.
+Copyright (C) 2025 @ Manueel62
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import subprocess
 import sys
+from pathlib import Path
+
 from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
-from PySide6.QtWidgets import (
-    QApplication,
-    QLabel,
-    QMenu,
-    QMessageBox,
-    QSystemTrayIcon,
-)
+from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
-def resource_path(relative_path: str) -> str:
-    """Get absolute path to resource, works for dev and PyInstaller"""
-    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_path, relative_path)
+import src.gui.assets  # tray icon
+
 
 class Tray(QSystemTrayIcon):
     start_signal = Signal()
@@ -25,7 +35,7 @@ class Tray(QSystemTrayIcon):
     def __init__(self):
         super().__init__()
         print(Path().absolute())
-        self._initial_icon: QIcon = QIcon(resource_path("assets/tray_icon.png"))
+        self._initial_icon: QIcon = QIcon(":/tray_icon.png")
         self._menu: QMenu = QMenu()
 
         # actions
@@ -48,7 +58,7 @@ class Tray(QSystemTrayIcon):
             <b>Version:</b> 0.0.3<br>
             <b>Author:</b> Manueel62 <br>
             <b>Website:</b> <a href='https://github.com/manueel62/pomlet'>https://github.com/manueel62/pomlet</a><br><br>
-            © 2025 Manueel62. All rights reserved.
+            GPL License © 2025 Manueel62. All rights reserved.
             """,
         )
 
@@ -85,7 +95,6 @@ class Tray(QSystemTrayIcon):
         self._pause_timer.setEnabled(True)
         self._stop_timer.setEnabled(True)
 
-
     def stop(self):
         self._time_left.setVisible(False)
 
@@ -96,15 +105,17 @@ class Tray(QSystemTrayIcon):
 
     def pause(self):
         self.pause_signal.emit()
-        self._pause_timer.setText("Resume" if self._pause_timer.text() == "Pause" else "Pause")
+        self._pause_timer.setText(
+            "Resume" if self._pause_timer.text() == "Pause" else "Pause"
+        )
 
     def update(self, remaining_minutes: int, remaining_seconds: int):
         self.setIcon(self.label_to_icon(QLabel(f"{remaining_minutes}")))
-        self._time_left.setText(f"Time left: {remaining_minutes:02}:{remaining_seconds:02}")
+        self._time_left.setText(
+            f"Time left: {remaining_minutes:02}:{remaining_seconds:02}"
+        )
 
-    def label_to_icon(
-        self, label: QLabel, render_size: int = 64
-    ) -> QIcon:
+    def label_to_icon(self, label: QLabel, render_size: int = 64) -> QIcon:
         # Style and layout
         label.setStyleSheet("""
             QLabel {
@@ -131,5 +142,12 @@ class Tray(QSystemTrayIcon):
 
     def showMsg(self, msg: str):
         if sys.platform == "darwin":
-            subprocess.run(["osascript", "-e", f"display notification \"{msg}\" with title \"Pomlet\""])
+            subprocess.run(
+                ["osascript", "-e", f'display notification "{msg}" with title "Pomlet"']
+            )
+        self.showMessage("Pomlet", msg, QSystemTrayIcon.MessageIcon.Information)
+        if sys.platform == "darwin":
+            subprocess.run(
+                ["osascript", "-e", f'display notification "{msg}" with title "Pomlet"']
+            )
         self.showMessage("Pomlet", msg, QSystemTrayIcon.MessageIcon.Information)

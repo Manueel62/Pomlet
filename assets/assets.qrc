@@ -1,0 +1,6 @@
+<!-- resources.qrc -->
+<RCC>
+    <qresource prefix="/">
+        <file>tray_icon.png</file>
+    </qresource>
+</RCC>
