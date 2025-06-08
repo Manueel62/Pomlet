@@ -187,7 +187,7 @@ class TimerTab(QWidget):
         )
 
         logging.debug(f"Removing subject: {self._subject_box.currentText()}")
-        if reply is QMessageBox.StandardButton.No:
+        if reply == QMessageBox.StandardButton.No:
             logging.debug("Subject not removed. User cancelled.")
             return
 
