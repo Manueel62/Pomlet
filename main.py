@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
+from math import log
 import os
 import sys
 
@@ -26,25 +27,28 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
 from src.gui.pomlet_window import PomletWindow
+from src.config import get_config_path
+
+logger = logging.getLogger(__name__)
 
 
 def setup_logger():
     dev_mode = os.getenv("DEV", "").lower() == "true"
+    log_path = get_config_path().parent.joinpath("pomlet.log")
 
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s %(filename)-15s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        filename=None if dev_mode else "pomlet.log",
+        filename=None if dev_mode else log_path,
         filemode="w",
-        force=True,  # Ensures it overrides any prior config
     )
 
+    logger.debug("Dev mode: %s, logs at: %s", dev_mode, log_path)
 
 if __name__ == "__main__":
     load_dotenv()
     setup_logger()
-    logger = logging.getLogger(__name__)
 
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))

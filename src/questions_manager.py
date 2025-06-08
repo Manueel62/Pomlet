@@ -24,7 +24,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from random import shuffle
 from typing import Any, Dict, List
-from venv import logger
 
 from src.config import get_config_path
 

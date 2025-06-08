@@ -65,6 +65,7 @@ class ListTab(QWidget):
             }
 
         """)
+        self._tree.header().setSectionsMovable(False)
         layout = QVBoxLayout(self)
         layout.addWidget(self._info_label)
         layout.addWidget(self._tree)
@@ -227,16 +228,15 @@ class ListTab(QWidget):
 
             for question in questions:
                 n_reps: str = str(question["repeated"])
-                next_rep: str = str(
-                    (
-                        datetime.fromisoformat(question["next_repeat"]) - datetime.now()
-                    ).days
-                )
+                next_rep: int = (
+                    datetime.fromisoformat(question["next_repeat"]) - datetime.now()
+                ).days
+
                 question_item = QTreeWidgetItem(
                     [
                         question["question"].strip(),
                         n_reps.strip(),
-                        next_rep.strip(),
+                        str(next_rep) if next_rep >= 0 else "Overdue",
                         str(question["id"]),
                     ]
                 )

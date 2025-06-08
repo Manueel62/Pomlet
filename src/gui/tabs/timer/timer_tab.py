@@ -243,14 +243,14 @@ class TimerTab(QWidget):
 
     def on_toggle_pause(self):
         logger.debug("Toggling pause, current state: %s", self._timer.is_paused())
+        self._tray.on_toggle_pause()
+
         if self._timer.is_paused():
             self._timer.resume()
             self._pause_btn.setText("⏸ Pause")
-            self._tray.on_toggle_pause()
         else:
             self._timer.pause()
             self._pause_btn.setText("▶ Resume")
-            self._tray.on_toggle_pause()
 
     def on_tick(self, perc: float, mins: int, secs: int):
         self._update_circle(perc, mins, secs)
