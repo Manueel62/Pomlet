@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -24,17 +25,22 @@ from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
+from src import __version__
 import src.gui.assets  # tray icon
+from src.timer.session_type import SessionType
+
+logger = logging.getLogger(__name__)
 
 
 class Tray(QSystemTrayIcon):
-    start_signal = Signal()
-    stop_signal = Signal()
-    pause_signal = Signal()
+    started = Signal()
+    stopped = Signal()
+    paused = Signal()
 
     def __init__(self):
         super().__init__()
-        print(Path().absolute())
+
+        logger.debug("Tray path: %s", Path().absolute())
         self._initial_icon: QIcon = QIcon(":/tray_icon.png")
         self._menu: QMenu = QMenu()
 
@@ -52,10 +58,10 @@ class Tray(QSystemTrayIcon):
         QMessageBox.about(
             None,
             "About Pomlet",
-            """
+            f"""
             <b>Pomlet</b><br>
             A simple Pomodoro timer for your studies.<br><br>
-            <b>Version:</b> 0.0.3<br>
+            <b>Version:</b> v{__version__} <br>
             <b>Author:</b> Manueel62 <br>
             <b>Website:</b> <a href='https://github.com/manueel62/pomlet'>https://github.com/manueel62/pomlet</a><br><br>
             GPL License © 2025 Manueel62. All rights reserved.
@@ -72,9 +78,9 @@ class Tray(QSystemTrayIcon):
         # connect actions
         self._quit.triggered.connect(QApplication.quit)
         self._about.triggered.connect(self._show_about)
-        self._start_timer.triggered.connect(self.start)
-        self._pause_timer.triggered.connect(self.pause)
-        self._stop_timer.triggered.connect(self.stop)
+        self._start_timer.triggered.connect(lambda: self.started.emit())
+        self._pause_timer.triggered.connect(lambda: self.paused.emit())
+        self._stop_timer.triggered.connect(lambda: self.stopped.emit())
 
         # add actions
         self._menu.addAction(self._time_left)
@@ -87,42 +93,45 @@ class Tray(QSystemTrayIcon):
         # Add the menu to the tray
         self.setContextMenu(self._menu)
 
-    def start(self):
-        self._time_left.setVisible(True)
+    def on_session_ended(self, next_session_type: SessionType):
+        self.setIcon(self._initial_icon)
+        self.on_session_stopped()
+        self._start_timer.setText(f"Start '{next_session_type.name.title()}' session")
 
-        self.start_signal.emit()
-        self._start_timer.setEnabled(False)
-        self._pause_timer.setEnabled(True)
-        self._stop_timer.setEnabled(True)
-
-    def stop(self):
+    def on_session_stopped(self):
+        self.setIcon(self._initial_icon)
+        self._start_timer.setText("Start")
         self._time_left.setVisible(False)
-
-        self.stop_signal.emit()
         self._start_timer.setEnabled(True)
         self._pause_timer.setEnabled(False)
         self._stop_timer.setEnabled(False)
 
-    def pause(self):
-        self.pause_signal.emit()
+    def on_session_started(self):
+        logger.debug("Signal received to start the timer")
+        self._start_timer.setEnabled(False)
+        self._pause_timer.setEnabled(True)
+        self._stop_timer.setEnabled(True)
+        self._time_left.setVisible(True)
+
+    def on_toggle_pause(self):
         self._pause_timer.setText(
             "Resume" if self._pause_timer.text() == "Pause" else "Pause"
         )
 
-    def update(self, remaining_minutes: int, remaining_seconds: int):
+    def on_tick(self, _: float, remaining_minutes: int, remaining_seconds: int):
         self.setIcon(self.label_to_icon(QLabel(f"{remaining_minutes}")))
         self._time_left.setText(
             f"Time left: {remaining_minutes:02}:{remaining_seconds:02}"
         )
 
     def label_to_icon(self, label: QLabel, render_size: int = 64) -> QIcon:
-        # Style and layout
         label.setStyleSheet("""
             QLabel {
                 background: transparent;
                 font: bold 40px;
             }
         """)
+
         label.setFixedSize(QSize(render_size, render_size))
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -137,8 +146,10 @@ class Tray(QSystemTrayIcon):
             QRegion(label.rect()),
         )
         painter.end()
+        icon: QIcon = QIcon(pixmap)
+        icon.setIsMask(True)  # automatically switch to black if light bg
 
-        return QIcon(pixmap)
+        return icon
 
     def showMsg(self, msg: str):
         if sys.platform == "darwin":

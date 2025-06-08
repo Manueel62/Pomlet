@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import json
+import logging
 import shutil
 from copy import copy
 from datetime import datetime, timedelta
@@ -25,6 +26,8 @@ from random import shuffle
 from typing import Any, Dict, List
 
 from src.config import get_config_path
+
+logger = logging.getLogger(__name__)
 
 
 class QuestionManager:
@@ -49,13 +52,15 @@ class QuestionManager:
         question_path: Path = self._get_question_path()
         backups_dir: Path = question_path.parent.joinpath("backups")
         creations: List[Path] = list(backups_dir.iterdir())
-        # print("MAX ",  max(map(lambda x: x.stem, creations)))
-        # print("MIN ",  min(map(lambda x: x.stem, creations)))
+        logger.debug("MAX %s", max(map(lambda x: x.stem, creations)))
+        logger.debug("MIN %s", min(map(lambda x: x.stem, creations)))
 
         # ascending
         indexes: List[int] = sorted(
             list(range(len(creations))),
-            key=lambda x: datetime.fromisoformat(creations[x].stem),
+            key=lambda x: datetime.fromisoformat(
+                self._filename_to_isoformat(creations[x].stem)
+            ),
         )
 
         # keep last 10 backups
@@ -63,6 +68,12 @@ class QuestionManager:
             creations[i].unlink()
 
         self._operations = 0
+
+    def _filename_to_isoformat(self, filename: str):
+        return filename.replace("_", ":")
+
+    def _isoformat_to_filename(self, isoformat: str):
+        return isoformat.replace(":", "_")
 
     def save_questions(self):
         if self._operations > 50:
@@ -73,7 +84,9 @@ class QuestionManager:
         backups_dir.mkdir(exist_ok=True)
         shutil.copyfile(
             question_path,
-            backups_dir.joinpath(datetime.now().isoformat()),
+            backups_dir.joinpath(
+                self._isoformat_to_filename(datetime.now().isoformat())
+            ),
         )
 
         self._operations += 1
@@ -152,14 +165,12 @@ class QuestionManager:
             case 0:
                 delta = timedelta(hours=0)
             case 1:
-                delta = timedelta(hours=12)
-            case 2:
                 delta = timedelta(days=1)
-            case 3:
+            case 2:
                 delta = timedelta(days=3)
-            case 4:
+            case 3:
                 delta = timedelta(days=7)
-            case 5:
+            case 4:
                 delta = timedelta(days=14)
             case 5:
                 delta = timedelta(days=31)
@@ -206,12 +217,18 @@ class QuestionManager:
             if question["id"] == id:
                 return copy(question)
 
+    def remove_all_by_subject(self, subject: str):
+        logger.debug("Removing all questions for subject: %s", subject)
+        self._questions = list(filter(lambda x: x["subject"] != subject, self._questions))
+        self.save_questions()
+
     def remove(self, question: Dict[str, Any]):
-        question = self.find_question(question)
-        if question is None:
+        logger.debug("Removing question: %s", question)
+        found_question: Dict[str, Any] = self.find_question(question)
+        if found_question is None:
             return
 
-        self._questions.remove(question)
+        self._questions.remove(found_question)
         self.save_questions()
 
     @property

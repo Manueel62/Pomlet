@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Any, Dict, Optional
+from venv import logger
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -26,6 +27,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QTextEdit,
@@ -33,7 +35,6 @@ from PySide6.QtWidgets import (
     QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
-    QMessageBox
 )
 
 from src.questions_manager import QuestionManager
@@ -64,6 +65,7 @@ class ListTab(QWidget):
             }
 
         """)
+        self._tree.header().setSectionsMovable(False)
         layout = QVBoxLayout(self)
         layout.addWidget(self._info_label)
         layout.addWidget(self._tree)
@@ -147,12 +149,14 @@ class ListTab(QWidget):
         button_layout.addWidget(btn_back, alignment=Qt.AlignmentFlag.AlignCenter)
         button_layout.addStretch()
 
-        button_layout.addWidget(self._modify_stacked_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        button_layout.addWidget(
+            self._modify_stacked_btn, alignment=Qt.AlignmentFlag.AlignCenter
+        )
         button_layout.addWidget(btn_remove, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addLayout(button_layout)
 
         # --- Button Logic ---
-        btn_back.clicked.connect(self._back)
+        btn_back.clicked.connect(lambda: self._back(dialog))
         btn_remove.clicked.connect(lambda: self._on_remove_question(dialog, question))
         btn_modify.clicked.connect(self._on_modify_question)
         btn_save.clicked.connect(lambda: self._save_changes(dialog, question))
@@ -182,7 +186,7 @@ class ListTab(QWidget):
             self,
             "Confirm",
             "Are you sure you want to delete the flashcard?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if confirm == QMessageBox.StandardButton.Yes:
@@ -211,6 +215,8 @@ class ListTab(QWidget):
 
     def refresh(self):
         """Rebuild the tree from current questions."""
+        logger.debug("Refreshing ListTab tree...")
+
         self._tree.clear()
         grouped = self._questions_manager.get_all_grouped_by_subject()
 
@@ -222,16 +228,15 @@ class ListTab(QWidget):
 
             for question in questions:
                 n_reps: str = str(question["repeated"])
-                next_rep: str = str(
-                    (
-                        datetime.fromisoformat(question["next_repeat"]) - datetime.now()
-                    ).days
-                )
+                next_rep: int = (
+                    datetime.fromisoformat(question["next_repeat"]) - datetime.now()
+                ).days
+
                 question_item = QTreeWidgetItem(
                     [
                         question["question"].strip(),
                         n_reps.strip(),
-                        next_rep.strip(),
+                        str(next_rep) if next_rep >= 0 else "Overdue",
                         str(question["id"]),
                     ]
                 )

@@ -162,7 +162,7 @@ class ReviewTab(QWidget):
                 QMessageBox.StandardButton.Ok,
             )
             return  # Exit the function early
-        
+
         self._modify_btns_stack.setCurrentWidget(self._modify_btn)
         self._question_stack.setCurrentWidget(self._question_label)
         self._current_question["question"] = self._modify_question_field.toPlainText()
@@ -196,6 +196,8 @@ class ReviewTab(QWidget):
             return
 
         self._questions_manager.correct(self._current_question)
+        self.flashcard_modified.emit()
+
         next_question: Dict[str, Any] | None = (
             self._questions_manager.get_next_to_repeat()
         )
@@ -207,7 +209,6 @@ class ReviewTab(QWidget):
         self._question_label.setText(next_question["question"])
         self._subject_label.setText(next_question["subject"])
         self._current_question = next_question
-        self.flashcard_modified.emit()
 
     def _on_start_review(self):
         self._modify_btn.setEnabled(True)
@@ -233,6 +234,8 @@ class ReviewTab(QWidget):
             return
 
         self._questions_manager.wrong(self._current_question)
+        self.flashcard_modified.emit()
+
         next_question: Dict[str, Any] | None = (
             self._questions_manager.get_next_to_repeat()
         )
@@ -244,7 +247,6 @@ class ReviewTab(QWidget):
         self._question_label.setText(next_question["question"])
         self._subject_label.setText(next_question["subject"])
         self._current_question = next_question
-        self.flashcard_modified.emit()
 
     def on_flashcard_added(self):
         self._start_review_btn.setEnabled(True)

@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -30,6 +31,8 @@ from PySide6.QtWidgets import (
 from src.config import get_subjects
 from src.questions_manager import QuestionManager
 
+
+logger = logging.getLogger(__name__)
 
 class AddTab(QWidget):
     flashcard_added: Signal = Signal()
@@ -88,11 +91,12 @@ class AddTab(QWidget):
         self.flashcard_added.emit()
 
     def on_subjects_updated(self, subject: str):
-        print("Called ", subject)
+        logger.debug("Subject updated received in AddTab for: %s", subject)
         self._subject_box.clear()
         self._subject_box.addItems(get_subjects())
 
         if subject is None: # subject deleted (no string passed)
+            logger.debug("No subject given. Not setting current text.")
             return
         
         self._subject_box.setCurrentText(subject)
