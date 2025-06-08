@@ -25,6 +25,7 @@ from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
+from src import __version__
 import src.gui.assets  # tray icon
 from src.timer.session_type import SessionType
 
@@ -57,10 +58,10 @@ class Tray(QSystemTrayIcon):
         QMessageBox.about(
             None,
             "About Pomlet",
-            """
+            f"""
             <b>Pomlet</b><br>
             A simple Pomodoro timer for your studies.<br><br>
-            <b>Version:</b> v0.2.0 <br>
+            <b>Version:</b> v{__version__} <br>
             <b>Author:</b> Manueel62 <br>
             <b>Website:</b> <a href='https://github.com/manueel62/pomlet'>https://github.com/manueel62/pomlet</a><br><br>
             GPL License © 2025 Manueel62. All rights reserved.
