@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from src.gui.pomlet_app import PomletApp
+from src.gui.pomlet_window import PomletWindow
 
 
 def setup_logger():
@@ -37,6 +37,7 @@ def setup_logger():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+
 if __name__ == "__main__":
     setup_logger()
     logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))
-    window = PomletApp()
+    window = PomletWindow()
     qdarktheme.setup_theme("auto")
     window.show()
-    sys.exit(app.exec())    
+    sys.exit(app.exec())

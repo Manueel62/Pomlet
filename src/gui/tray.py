@@ -26,15 +26,15 @@ from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
 import src.gui.assets  # tray icon
-from src.gui.tabs.timer.timer import SessionType
+from src.timer.session_type import SessionType
 
 logger = logging.getLogger(__name__)
 
 
 class Tray(QSystemTrayIcon):
-    start_signal = Signal()
-    stop_signal = Signal()
-    pause_signal = Signal()
+    started = Signal()
+    stopped = Signal()
+    paused = Signal()
 
     def __init__(self):
         super().__init__()
@@ -60,7 +60,7 @@ class Tray(QSystemTrayIcon):
             """
             <b>Pomlet</b><br>
             A simple Pomodoro timer for your studies.<br><br>
-            <b>Version:</b> 0.0.3<br>
+            <b>Version:</b> v0.2.0 <br>
             <b>Author:</b> Manueel62 <br>
             <b>Website:</b> <a href='https://github.com/manueel62/pomlet'>https://github.com/manueel62/pomlet</a><br><br>
             GPL License © 2025 Manueel62. All rights reserved.
@@ -77,9 +77,9 @@ class Tray(QSystemTrayIcon):
         # connect actions
         self._quit.triggered.connect(QApplication.quit)
         self._about.triggered.connect(self._show_about)
-        self._start_timer.triggered.connect(self.start)
-        self._pause_timer.triggered.connect(self.pause)
-        self._stop_timer.triggered.connect(self.stop)
+        self._start_timer.triggered.connect(lambda: self.started.emit())
+        self._pause_timer.triggered.connect(lambda: self.paused.emit())
+        self._stop_timer.triggered.connect(lambda: self.stopped.emit())
 
         # add actions
         self._menu.addAction(self._time_left)
@@ -96,7 +96,6 @@ class Tray(QSystemTrayIcon):
         self.setIcon(self._initial_icon)
         self.on_session_stopped()
         self._start_timer.setText(f"Start '{next_session_type.name.title()}' session")
-        self._is_dark_mode = is_dark_mode()  # recheck dark mode
 
     def on_session_stopped(self):
         self.setIcon(self._initial_icon)
@@ -106,30 +105,19 @@ class Tray(QSystemTrayIcon):
         self._pause_timer.setEnabled(False)
         self._stop_timer.setEnabled(False)
 
-    def start(self):
+    def on_session_started(self):
         logger.debug("Signal received to start the timer")
-        self._time_left.setVisible(True)
-
-        self.start_signal.emit()
         self._start_timer.setEnabled(False)
         self._pause_timer.setEnabled(True)
         self._stop_timer.setEnabled(True)
+        self._time_left.setVisible(True)
 
-    def stop(self):
-        self._time_left.setVisible(False)
-
-        self.stop_signal.emit()
-        self._start_timer.setEnabled(True)
-        self._pause_timer.setEnabled(False)
-        self._stop_timer.setEnabled(False)
-
-    def pause(self):
-        self.pause_signal.emit()
+    def on_toggle_pause(self):
         self._pause_timer.setText(
             "Resume" if self._pause_timer.text() == "Pause" else "Pause"
         )
 
-    def update(self, remaining_minutes: int, remaining_seconds: int):
+    def on_tick(self, _: float, remaining_minutes: int, remaining_seconds: int):
         self.setIcon(self.label_to_icon(QLabel(f"{remaining_minutes}")))
         self._time_left.setText(
             f"Time left: {remaining_minutes:02}:{remaining_seconds:02}"

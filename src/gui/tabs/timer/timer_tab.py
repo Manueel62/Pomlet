@@ -16,12 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import enum
 import logging
-from datetime import datetime, timedelta
-from typing import Callable, List, Optional
+from datetime import datetime
+from typing import Callable, List
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -30,11 +29,12 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
-    QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
+    QSystemTrayIcon
 )
 
+from src.gui.tray import Tray
 from src.calendar_manager import create_calendar_event
 from src.config import (
     add_subject,
@@ -46,51 +46,33 @@ from src.config import (
 from src.gui.tabs.timer.progress_circle import ProgressCircle
 from src.questions_manager import QuestionManager
 from src.sound import play_sound
+from src.timer.pomlet_timer import PomletTimer, SessionType
 
 logger = logging.getLogger(__name__)
 
 
-class SessionType(enum.Enum):
-    BREAK = enum.auto()
-    WORK = enum.auto()
-    NONE = enum.auto()
-
-
 class TimerTab(QWidget):
     subjects_updated = Signal(str)
-    session_ended = Signal(SessionType)
-    session_stopped = Signal()
-    session_started = Signal()
-    tick = Signal(int, int)
 
-    def __init__(
-        self,
-        questions_manager: QuestionManager,
-        tray: QSystemTrayIcon,
-        default_work: int,
-        default_break: int,
-    ):
+
+    def __init__(self, questions_manager: QuestionManager, timer: PomletTimer, tray: Tray):
         super().__init__()
+
+        default_work, default_break = load_config(None)
 
         self._default_work: int = default_work
         self._default_break: int = default_break
+        self._timer = timer
+        self._tray = tray
 
         self._questions_manager: QuestionManager = questions_manager
-        self._tray: QSystemTrayIcon = tray
         self._subjects: List[str] = get_subjects()
         self._subject_box = QComboBox()
         self._add_btn = QPushButton("+")
         self._rm_btn = QPushButton("-")
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._tick)
 
-        self._current_session_type: SessionType = SessionType.NONE
-        self._total_time: timedelta = timedelta()
-        self._remaining_time: timedelta = timedelta()
-        self._session_end_time: Optional[datetime] = None
         self._work_started_at = None
         self._work_done: bool = False
-        self._paused: bool = False
 
         self._work_slider: QSlider = QSlider(Qt.Orientation.Horizontal)
         self._break_slider: QSlider = QSlider(Qt.Orientation.Horizontal)
@@ -162,13 +144,13 @@ class TimerTab(QWidget):
 
         btns: QHBoxLayout = QHBoxLayout()
         self._start_btn.setObjectName("Start")
-        self._start_btn.clicked.connect(self.start)
+        self._start_btn.clicked.connect(self.on_session_started)
 
         self._stop_btn.setObjectName("Stop")
-        self._stop_btn.clicked.connect(self.stop)
+        self._stop_btn.clicked.connect(self.on_session_stopped)
 
         self._pause_btn.setObjectName("Pause")
-        self._pause_btn.clicked.connect(self.toggle_pause)
+        self._pause_btn.clicked.connect(self.on_toggle_pause)
 
         for btn in [self._start_btn, self._stop_btn, self._pause_btn]:
             btn.setMinimumWidth(80)
@@ -225,109 +207,74 @@ class TimerTab(QWidget):
             self.subjects_updated.emit(subject_name)
             self._rm_btn.setEnabled(True)
 
-    def start(self):
-        logger.debug("Starting timer in %s", self._current_session_type)
+    def on_session_started(self):
         if self._subject_box.currentText() == "":
             QMessageBox.warning(
                 self, "No Subject Selected", "Please create a subject first!"
             )
             logger.debug("No subject selected. Aborting.")
             return
-        
-        self.session_started.emit()
-        if (
-            self._work_done
-            # and self._start_btn.text().lower().strip() == "▶ start break"
-        ):
-            self._start_break()
+
+        if self._work_done:
+            self._timer.start_session(SessionType.BREAK, self._break_slider.value())
+
         else:
-            self._start_session(SessionType.WORK, self._work_slider.value())
-            self._work_started_at = datetime.now()
+            self._timer.start_session(SessionType.WORK, self._work_slider.value())
 
-    def _start_break(self):
-        self._start_session(SessionType.BREAK, self._break_slider.value())
+        logger.debug("Starting timer in %s", self._timer.current_session_type())
 
-    def _start_session(self, session_type: SessionType, minutes: int):
-        if self._session_end_time is not None:
-            logger.warning("Tried to start a session, but already existing!")
-            return
-
-        self._current_session_type = session_type
-        self._total_time = timedelta(minutes=minutes)
-        self._session_end_time = datetime.now() + self._total_time
-        self._remaining_time = self._total_time
-        self._paused = False
-
+        self._work_started_at = datetime.now()
         self._start_btn.setEnabled(False)
         self._stop_btn.setEnabled(True)
         self._pause_btn.setEnabled(True)
-
         self._work_slider.setEnabled(False)
         self._break_slider.setEnabled(False)
         self._subject_box.setEnabled(False)
+        self._add_btn.setEnabled(False)
+        self._rm_btn.setEnabled(False)
+        self._tray.on_session_started()
 
-        self._update_circle()
-        self._timer.start(1000)
 
-    def stop(self):
-        logger.debug("Stopping timer")
-        self.session_stopped.emit()
+    def on_session_stopped(self):
+        logger.debug("Reacting to timer being stopped")
+        self._timer.stop()
         self._reset()
+        self._tray.on_session_stopped()
 
-    def toggle_pause(self):
-        if self._paused:
-            self._session_end_time = datetime.now() + self._remaining_time
-            self._timer.start(1000)
+    def on_toggle_pause(self):
+        logger.debug("Toggling pause, current state: %s", self._timer.is_paused())
+        if self._timer.is_paused():
+            self._timer.resume()
             self._pause_btn.setText("⏸ Pause")
+            self._tray.on_toggle_pause()
         else:
-            if self._session_end_time is None:
-                logger.warning("Tried to pause, but no session running!")
-                return
-
-            self._remaining_time = self._session_end_time - datetime.now()
-            self._timer.stop()
+            self._timer.pause()
             self._pause_btn.setText("▶ Resume")
-        self._paused = not self._paused
+            self._tray.on_toggle_pause()
 
-    def _tick(self):
-        if self._session_end_time is None:
-            logger.warning("Tried to tick, but no session running!")
-            return
+    def on_tick(self, perc: float, mins: int, secs: int):
+        self._update_circle(perc, mins, secs)
+        self._tray.on_tick(perc, mins, secs)
 
-        self._remaining_time = self._session_end_time - datetime.now()
-        if self._remaining_time.total_seconds() <= 0:
-            self._timer.stop()
-            self._session_done()
-            return
-        self._update_circle()
-
-    def _update_circle(self):
-        total_secs = int(self._remaining_time.total_seconds())
-        mins, secs = divmod(total_secs, 60)
-        percent = 1 - self._remaining_time / self._total_time
+    def _update_circle(self, perc: float, mins: int, secs: int):
         time_to_display: str = f"{mins:02}:{secs:02}"
+        self._circle.update_progress(perc, time_to_display)
 
-        self.tick.emit(mins, secs)
-        self._circle.update_progress(percent, time_to_display)
-
-    def _session_done(self):
+    def on_session_ended(self):
         msg: str = ""
         play_sound()
 
-        match self._current_session_type:
+        match self._timer.current_session_type():
             case SessionType.WORK:
-                msg  = "Time's up! Take a break!"
+                msg = "Time's up! Take a break!"
                 self._work_done = True
                 title = f"{self._subject_box.currentText()} Pomodoro"
                 create_calendar_event(title, self._work_started_at, datetime.now())
                 self._start_btn.setText("▶ Start Break")
                 self._circle.update_progress(1, f"{self._break_slider.value()}:00")
-
-                self.session_ended.emit(SessionType.BREAK)
             case SessionType.BREAK:
                 msg = "Time's up! Get back to work!"
                 self._start_btn.setText("▶ Start")
-                self.session_ended.emit(SessionType.WORK)
                 self._circle.update_progress(1, f"{self._break_slider.value()}:00")
             case _:
                 logger.warning("Tried to end session, but no session running!")
@@ -340,9 +287,6 @@ class TimerTab(QWidget):
         self._work_slider.setEnabled(True)
         self._break_slider.setEnabled(True)
         self._subject_box.setEnabled(True)
-
-        self._current_session_type = SessionType.NONE
-        self._session_end_time = None
 
     def on_subject_changed(self):
         logger.debug("Subject changed in TimerTab")
@@ -357,7 +301,7 @@ class TimerTab(QWidget):
         self._work_value_label.setText(f"{self._default_work} min")
         self._break_value_label.setText(f"{self._default_break} min")
 
-        if self._current_session_type is not SessionType.NONE:
+        if self._timer.current_session_type() is not SessionType.NONE:
             self._circle.reset(f"{self._default_work:02}:00")
 
     def _make_slider(
@@ -383,11 +327,7 @@ class TimerTab(QWidget):
         return layout
 
     def _reset(self):
-        self._timer.stop()
-        self._current_session_type = SessionType.NONE
         self._work_done = False
-        self._paused = False
-        self._session_end_time = None
 
         self._start_btn.setEnabled(True)
         self._start_btn.setText("▶ Start")
@@ -398,12 +338,14 @@ class TimerTab(QWidget):
         self._subject_box.setEnabled(True)
         self._work_slider.setEnabled(True)
         self._break_slider.setEnabled(True)
+        self._add_btn.setEnabled(True)
+        self._rm_btn.setEnabled(True)
 
         self._circle.reset(f"{self._work_slider.value():02}:00")
 
     def _work_changed(self, val: int):
         self._work_value_label.setText(f"{val} min")
-        if self._current_session_type is SessionType.NONE:
+        if self._timer.current_session_type() is SessionType.NONE:
             self._circle.reset(f"{val:02}:00")
         modify_subject(self._subject_box.currentText(), val, self._break_slider.value())
 
