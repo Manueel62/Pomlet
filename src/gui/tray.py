@@ -25,8 +25,8 @@ from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
-from src.gui.tabs.timer.timer import SessionType
 import src.gui.assets  # tray icon
+from src.gui.tabs.timer.timer import SessionType
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,7 @@ class Tray(QSystemTrayIcon):
         self.setIcon(self._initial_icon)
         self.on_session_stopped()
         self._start_timer.setText(f"Start '{next_session_type.name.title()}' session")
+        self._is_dark_mode = is_dark_mode()  # recheck dark mode
 
     def on_session_stopped(self):
         self.setIcon(self._initial_icon)
@@ -106,6 +107,7 @@ class Tray(QSystemTrayIcon):
         self._stop_timer.setEnabled(False)
 
     def start(self):
+        logger.debug("Signal received to start the timer")
         self._time_left.setVisible(True)
 
         self.start_signal.emit()
@@ -134,13 +136,13 @@ class Tray(QSystemTrayIcon):
         )
 
     def label_to_icon(self, label: QLabel, render_size: int = 64) -> QIcon:
-        # Style and layout
         label.setStyleSheet("""
             QLabel {
                 background: transparent;
                 font: bold 40px;
             }
         """)
+
         label.setFixedSize(QSize(render_size, render_size))
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -155,8 +157,10 @@ class Tray(QSystemTrayIcon):
             QRegion(label.rect()),
         )
         painter.end()
+        icon: QIcon = QIcon(pixmap)
+        icon.setIsMask(True)  # automatically switch to black if light bg
 
-        return QIcon(pixmap)
+        return icon
 
     def showMsg(self, msg: str):
         if sys.platform == "darwin":
