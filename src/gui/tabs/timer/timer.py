@@ -58,6 +58,8 @@ class SessionType(enum.Enum):
 
 class TimerTab(QWidget):
     subjects_updated = Signal(str)
+    session_ended = Signal(SessionType)
+    session_stopped = Signal()
     tick = Signal(int, int)
 
     def __init__(
@@ -223,7 +225,7 @@ class TimerTab(QWidget):
             self._rm_btn.setEnabled(True)
 
     def start(self):
-        logger.debug("Starting timer")
+        logger.debug("Starting timer in %s", self._current_session_type)
         if self._subject_box.currentText() == "":
             QMessageBox.warning(
                 self, "No Subject Selected", "Please create a subject first!"
@@ -266,6 +268,8 @@ class TimerTab(QWidget):
         self._timer.start(1000)
 
     def stop(self):
+        logger.debug("Stopping timer")
+        self.session_stopped.emit()
         self._reset()
 
     def toggle_pause(self):
@@ -305,16 +309,27 @@ class TimerTab(QWidget):
         self._circle.update_progress(percent, time_to_display)
 
     def _session_done(self):
+        msg: str = ""
         play_sound()
-        if self._current_session_type is SessionType.WORK:
-            msg: str = "Time's up! Take a break!"
-            self._work_done = True
-            title = f"{self._subject_box.currentText()} Pomodoro"
-            create_calendar_event(title, self._work_started_at, datetime.now())
-            self._start_btn.setText("▶ Start Break")
-        else:
-            msg = "Time's up! Get back to work!"
-            self._start_btn.setText("▶ Start")
+
+        match self._current_session_type:
+            case SessionType.WORK:
+                msg  = "Time's up! Take a break!"
+                self._work_done = True
+                title = f"{self._subject_box.currentText()} Pomodoro"
+                create_calendar_event(title, self._work_started_at, datetime.now())
+                self._start_btn.setText("▶ Start Break")
+                self._circle.update_progress(1, f"{self._break_slider.value()}:00")
+
+                self.session_ended.emit(SessionType.BREAK)
+            case SessionType.BREAK:
+                msg = "Time's up! Get back to work!"
+                self._start_btn.setText("▶ Start")
+                self.session_ended.emit(SessionType.WORK)
+                self._circle.update_progress(1, f"{self._break_slider.value()}:00")
+            case _:
+                logger.warning("Tried to end session, but no session running!")
+                return
 
         self._tray.showMessage("Pomlet", msg, QSystemTrayIcon.MessageIcon.Information)
         self._start_btn.setEnabled(True)

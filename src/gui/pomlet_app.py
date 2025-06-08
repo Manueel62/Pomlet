@@ -66,6 +66,8 @@ class PomletApp(QWidget):
         self._add_tab.flashcard_added.connect(self._list_tab.refresh)
         self._review_tab.flashcard_modified.connect(self._list_tab.refresh)
         self._add_tab.flashcard_added.connect(self._list_tab.refresh)
+        self._timer_tab.session_ended.connect(self._tray.on_session_ended)
+        self._timer_tab.session_stopped.connect(self._tray.on_session_stopped)
 
     def _build_tabs(self):
         self.setStyleSheet("""

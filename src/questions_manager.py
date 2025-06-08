@@ -166,14 +166,12 @@ class QuestionManager:
             case 0:
                 delta = timedelta(hours=0)
             case 1:
-                delta = timedelta(hours=12)
-            case 2:
                 delta = timedelta(days=1)
-            case 3:
+            case 2:
                 delta = timedelta(days=3)
-            case 4:
+            case 3:
                 delta = timedelta(days=7)
-            case 5:
+            case 4:
                 delta = timedelta(days=14)
             case 5:
                 delta = timedelta(days=31)

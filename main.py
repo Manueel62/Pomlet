@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from src.gui.pomodoro import PomletApp
+from src.gui.pomlet_app import PomletApp
 
 
 def setup_logger():

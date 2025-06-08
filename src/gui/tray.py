@@ -25,6 +25,7 @@ from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
+from src.gui.tabs.timer.timer import SessionType
 import src.gui.assets  # tray icon
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,19 @@ class Tray(QSystemTrayIcon):
 
         # Add the menu to the tray
         self.setContextMenu(self._menu)
+
+    def on_session_ended(self, next_session_type: SessionType):
+        self.setIcon(self._initial_icon)
+        self.on_session_stopped()
+        self._start_timer.setText(f"Start '{next_session_type.name.title()}' session")
+
+    def on_session_stopped(self):
+        self.setIcon(self._initial_icon)
+        self._start_timer.setText("Start")
+        self._time_left.setVisible(False)
+        self._start_timer.setEnabled(True)
+        self._pause_timer.setEnabled(False)
+        self._stop_timer.setEnabled(False)
 
     def start(self):
         self._time_left.setVisible(True)
