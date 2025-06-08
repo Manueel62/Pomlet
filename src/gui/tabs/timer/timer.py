@@ -60,6 +60,7 @@ class TimerTab(QWidget):
     subjects_updated = Signal(str)
     session_ended = Signal(SessionType)
     session_stopped = Signal()
+    session_started = Signal()
     tick = Signal(int, int)
 
     def __init__(
@@ -233,6 +234,7 @@ class TimerTab(QWidget):
             logger.debug("No subject selected. Aborting.")
             return
         
+        self.session_started.emit()
         if (
             self._work_done
             # and self._start_btn.text().lower().strip() == "▶ start break"
