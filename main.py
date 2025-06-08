@@ -17,9 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
+import os
 import sys
 
-import dotenv
 import qdarktheme
 from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
@@ -29,20 +29,22 @@ from src.gui.pomlet_window import PomletWindow
 
 
 def setup_logger():
+    dev_mode = os.getenv("DEV", "").lower() == "true"
+
     logging.basicConfig(
         level=logging.DEBUG,
-        # filemode="w",
-        # filename="pomlet.log",
         format="%(asctime)s %(filename)-15s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        filename=None if dev_mode else "pomlet.log",
+        filemode="w",
+        force=True,  # Ensures it overrides any prior config
     )
 
 
 if __name__ == "__main__":
+    load_dotenv()
     setup_logger()
     logger = logging.getLogger(__name__)
-    logger.debug("Loaded .env file at: %s", dotenv.find_dotenv())
-    load_dotenv()
 
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))

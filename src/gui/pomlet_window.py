@@ -66,8 +66,8 @@ class PomletWindow(QWidget):
         # timer signals
         # tick sent to tray to be updated
         self._timer.tick.connect(self._timer_tab.on_tick)
-
-        # self._timer.ended.connect(self._timer_tab.on_session_ended)
+        self._timer.ended.connect(self._timer_tab.on_session_ended)
+        
         # self._timer.stopped.connect(self._timer_tab.on_session_stopped)
         # self._timer.started.connect(self._timer_tab.on_session_started)
         # self._timer.paused.connect(self._timer_tab.on_toggle_pause)

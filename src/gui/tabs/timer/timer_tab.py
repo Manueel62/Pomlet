@@ -29,12 +29,11 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
+    QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
-    QSystemTrayIcon
 )
 
-from src.gui.tray import Tray
 from src.calendar_manager import create_calendar_event
 from src.config import (
     add_subject,
@@ -44,6 +43,7 @@ from src.config import (
     remove_subject,
 )
 from src.gui.tabs.timer.progress_circle import ProgressCircle
+from src.gui.tray import Tray
 from src.questions_manager import QuestionManager
 from src.sound import play_sound
 from src.timer.pomlet_timer import PomletTimer, SessionType
@@ -54,8 +54,9 @@ logger = logging.getLogger(__name__)
 class TimerTab(QWidget):
     subjects_updated = Signal(str)
 
-
-    def __init__(self, questions_manager: QuestionManager, timer: PomletTimer, tray: Tray):
+    def __init__(
+        self, questions_manager: QuestionManager, timer: PomletTimer, tray: Tray
+    ):
         super().__init__()
 
         default_work, default_break = load_config(None)
@@ -217,7 +218,7 @@ class TimerTab(QWidget):
 
         if self._work_done:
             self._timer.start_session(SessionType.BREAK, self._break_slider.value())
-
+            self._work_done = False
         else:
             self._timer.start_session(SessionType.WORK, self._work_slider.value())
 
@@ -233,7 +234,6 @@ class TimerTab(QWidget):
         self._add_btn.setEnabled(False)
         self._rm_btn.setEnabled(False)
         self._tray.on_session_started()
-
 
     def on_session_stopped(self):
         logger.debug("Reacting to timer being stopped")
@@ -262,6 +262,7 @@ class TimerTab(QWidget):
 
     def on_session_ended(self):
         msg: str = ""
+
         play_sound()
 
         match self._timer.current_session_type():
@@ -272,10 +273,13 @@ class TimerTab(QWidget):
                 create_calendar_event(title, self._work_started_at, datetime.now())
                 self._start_btn.setText("▶ Start Break")
                 self._circle.update_progress(1, f"{self._break_slider.value()}:00")
+                self._tray.on_session_ended(SessionType.BREAK)
             case SessionType.BREAK:
                 msg = "Time's up! Get back to work!"
                 self._start_btn.setText("▶ Start")
                 self._circle.update_progress(1, f"{self._break_slider.value()}:00")
+                self._tray.on_session_ended(SessionType.WORK)
+
             case _:
                 logger.warning("Tried to end session, but no session running!")
                 return
@@ -345,10 +349,12 @@ class TimerTab(QWidget):
 
     def _work_changed(self, val: int):
         self._work_value_label.setText(f"{val} min")
-        if self._timer.current_session_type() is SessionType.NONE:
+        if self._timer.current_session_type() is SessionType.NONE and not self._work_done:
             self._circle.reset(f"{val:02}:00")
         modify_subject(self._subject_box.currentText(), val, self._break_slider.value())
 
     def _break_changed(self, val):
         self._break_value_label.setText(f"{val} min")
+        if self._timer.current_session_type() is SessionType.NONE and self._work_done:
+            self._circle.reset(f"{val:02}:00")
         modify_subject(self._subject_box.currentText(), self._work_slider.value(), val)

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from re import S
 from typing import Optional, Callable
 
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -9,7 +8,7 @@ from src.timer.session_type import SessionType
 class PomletTimer(QObject):
     tick = Signal(float, int, int)
     # started = Signal(SessionType)
-    # ended = Signal(SessionType)
+    ended = Signal(SessionType)
     # stopped = Signal()
     # paused = Signal()
 
@@ -82,9 +81,8 @@ class PomletTimer(QObject):
         self.tick.emit(percent, mins, secs)
 
     def _handle_session_done(self):
-        completed_type = self._current_session_type
+        self.ended.emit(self._current_session_type)
         self.reset()
-        # self.ended.emit(completed_type)
 
     def reset(self):
         self._current_session_type = SessionType.NONE
