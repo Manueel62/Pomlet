@@ -22,7 +22,6 @@ import shutil
 from copy import copy
 from datetime import datetime, timedelta
 from pathlib import Path
-from random import shuffle
 from typing import Any, Dict, List
 
 from src.config import get_config_path
@@ -103,7 +102,9 @@ class QuestionManager:
             ):  # None already repeated enough
                 qs.append(q)
 
-        shuffle(qs)
+        # shuffle(qs)
+        # do not shuffle -> order next_repeat
+        qs = sorted(qs, key=lambda x: x["next_repeat"])
 
         for q in qs:
             yield q
@@ -209,6 +210,11 @@ class QuestionManager:
                 grouped_questions[question["subject"]] = []
 
             grouped_questions[question["subject"]].append(question)
+
+        for group in grouped_questions:
+            grouped_questions[group] = sorted(
+                grouped_questions[group], key=lambda x: x["next_repeat"]
+            )
 
         return grouped_questions
 

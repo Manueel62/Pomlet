@@ -26,8 +26,8 @@ from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
 from src import __version__
-import src.gui.assets  # tray icon
-from src.timer.session_type import SessionType
+import src.frontend.assets  # tray icon
+from src.frontend.timer.session_type import SessionType
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,7 @@ class Tray(QSystemTrayIcon):
         self._time_left.setVisible(False)
 
         self._pause_timer.setEnabled(False)
+        self._stop_timer.setEnabled(False)
 
         # connect actions
         self._quit.triggered.connect(QApplication.quit)
@@ -101,6 +102,7 @@ class Tray(QSystemTrayIcon):
     def on_session_stopped(self):
         self.setIcon(self._initial_icon)
         self._start_timer.setText("Start")
+        self._pause_timer.setText("Pause")
         self._time_left.setVisible(False)
         self._start_timer.setEnabled(True)
         self._pause_timer.setEnabled(False)
@@ -111,6 +113,7 @@ class Tray(QSystemTrayIcon):
         self._start_timer.setEnabled(False)
         self._pause_timer.setEnabled(True)
         self._stop_timer.setEnabled(True)
+        self._time_left.setText("Time left: --:--")
         self._time_left.setVisible(True)
 
     def on_toggle_pause(self):

@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import calendar
 from datetime import datetime
 from typing import Any, Dict, Optional
 from venv import logger
@@ -213,6 +214,25 @@ class ListTab(QWidget):
         self._questions_manager.modify(question)
         self._close_dialog(dialog)
 
+    def _get_next_repeat_days(self, question: Dict[str, Any]) -> str:
+        next_repeat: datetime = datetime.fromisoformat(question["next_repeat"])
+        now: datetime = datetime.now()
+
+        if next_repeat < now:
+            return "Overdue"
+
+        if next_repeat.year != now.year:
+            days_in_year = 366 if calendar.isleap(now.year) else 365
+            return str(
+                days_in_year - now.timetuple().tm_yday + next_repeat.timetuple().tm_yday
+            )
+
+        days: int = next_repeat.timetuple().tm_yday - now.timetuple().tm_yday
+        if days < 1:
+            return "Later Today"
+        
+        return str(days)
+
     def refresh(self):
         """Rebuild the tree from current questions."""
         logger.debug("Refreshing ListTab tree...")
@@ -228,15 +248,14 @@ class ListTab(QWidget):
 
             for question in questions:
                 n_reps: str = str(question["repeated"])
-                next_rep: int = (
-                    datetime.fromisoformat(question["next_repeat"]) - datetime.now()
-                ).days
 
+                # in day of year
+                next_rep: str = self._get_next_repeat_days(question)
                 question_item = QTreeWidgetItem(
                     [
                         question["question"].strip(),
                         n_reps.strip(),
-                        str(next_rep) if next_rep >= 0 else "Overdue",
+                        next_rep,
                         str(question["id"]),
                     ]
                 )

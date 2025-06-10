@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
-from typing import Optional, Callable
+import os
+from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from src.timer.session_type import SessionType
+from src.frontend.timer.session_type import SessionType
+
 
 class PomletTimer(QObject):
     tick = Signal(float, int, int)
@@ -15,7 +17,7 @@ class PomletTimer(QObject):
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
 
-        self._current_session_type: SessionType = SessionType.NONE
+        self._done_session_type: SessionType = SessionType.NONE
         self._total_time: timedelta = timedelta()
         self._remaining_time: timedelta = timedelta()
         self._session_end_time: Optional[datetime] = None
@@ -30,8 +32,13 @@ class PomletTimer(QObject):
         if self._session_end_time is not None:
             return  # Session already running
 
-        self._current_session_type = session_type
-        self._total_time = timedelta(minutes=minutes)
+        self._done_session_type = session_type
+        # Fasten debug
+        if os.getenv("DEV") == "True": 
+            self._total_time = timedelta(seconds=minutes)
+        else:
+            self._total_time = timedelta(minutes=minutes)
+
         self._remaining_time = self._total_time
         self._session_end_time = datetime.now() + self._total_time
         self._paused = False
@@ -41,8 +48,7 @@ class PomletTimer(QObject):
 
     def stop(self):
         self._timer.stop()
-        self.reset()
-        # self.stopped.emit()
+        self.reset_session()
 
     def pause(self):
         if not self._paused and self._session_end_time is not None:
@@ -61,8 +67,8 @@ class PomletTimer(QObject):
     def is_paused(self) -> bool:
         return self._paused
 
-    def current_session_type(self) -> SessionType:
-        return self._current_session_type
+    def done_session_type(self) -> SessionType:
+        return self._done_session_type
 
     def _tick(self):
         if self._session_end_time is None:
@@ -81,11 +87,14 @@ class PomletTimer(QObject):
         self.tick.emit(percent, mins, secs)
 
     def _handle_session_done(self):
-        self.ended.emit(self._current_session_type)
+        self.ended.emit(self._done_session_type)
+        self.reset()
+
+    def reset_session(self):
+        self._done_session_type = SessionType.NONE
         self.reset()
 
     def reset(self):
-        self._current_session_type = SessionType.NONE
         self._total_time = timedelta()
         self._remaining_time = timedelta()
         self._session_end_time = None
