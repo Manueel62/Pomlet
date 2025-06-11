@@ -17,8 +17,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
-from PySide6.QtGui import QKeySequence, QShortcut
+import os
+from datetime import datetime
+
+import requests
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
     QLabel,
@@ -31,11 +35,12 @@ from PySide6.QtWidgets import (
 from src.config import get_subjects
 from src.questions_manager import QuestionManager
 
-
 logger = logging.getLogger(__name__)
+
 
 class AddTab(QWidget):
     flashcard_added: Signal = Signal()
+
     def __init__(self, questions_manager: QuestionManager):
         super().__init__()
         self._questions_manager = questions_manager
@@ -65,26 +70,59 @@ class AddTab(QWidget):
         layout.addStretch()
         layout.addWidget(self._add_flashcard_btn)
 
+        # now = datetime.now().isoformat()
+        # question = {
+        #     "id": self._id(),
+        #     "question": question_text,
+        #     "last_repeated": now,
+        #     "created": now,
+        #     "repeated": 0,
+        #     "subject": subject,
+        # }
+        # next_repeat = self._get_next_repeat(
+        #     question["repeated"], question["last_repeated"]
+        # )
+
+        # if next_repeat is None:
+        #     return None
+
+        # question["next_repeat"] = next_repeat.isoformat()
+        # # self._questions.append(question)
+        # # self.save_questions()
+
     def _on_add_flashcard_clicked(self):
         if self._question_input.toPlainText().strip() == "":
             return
 
-        question = self._questions_manager.add_question(
-            self._question_input.toPlainText(), self._subject_box.currentText()
+        now = datetime.now().timestamp() * 1000
+        question = {
+            "question": self._question_input.toPlainText(),
+            "course": self._subject_box.currentText(),
+            "chapter": "BA",
+            "lastRepeated": now,
+            "timesRepeated": 0,
+            "nextRepeat": now,
+        }
+
+        request = requests.post(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards", json=question
         )
 
-        if question is None:
-            self._add_info_label.setText("Error while adding question")
-        else:
-            self._add_info_label.setText(
-                f"""
-                <div align="center">
-                    <h3>Question added!</h3>
-                    <p><b>Question:</b> {question['question']}</p>
-                    <p><b>Subject:</b> {question['subject']}</p>
-                </div>
-                """
-                )
+        print(request)
+        if request.status_code != 201:
+            logger.warning("Error while creating flashcard")
+            return
+
+        self._add_info_label.setText(
+            f"""
+            <div align="center">
+                <h3>Question added!</h3>
+                <p><b>Question:</b> {question["question"]}</p>
+                <p><b>Subject:</b> {question["course"]}</p>
+                <p><b>Chapter:</b> {question["chapter"]}</p>
+            </div>
+            """
+        )
         self._question_input.setText("")
 
         # update count in review
@@ -95,10 +133,10 @@ class AddTab(QWidget):
         self._subject_box.clear()
         self._subject_box.addItems(get_subjects())
 
-        if subject is None: # subject deleted (no string passed)
+        if subject is None:  # subject deleted (no string passed)
             logger.debug("No subject given. Not setting current text.")
             return
-        
+
         self._subject_box.setCurrentText(subject)
 
     @property

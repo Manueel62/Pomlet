@@ -16,8 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import logging
+import os
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
+import requests
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
@@ -31,16 +35,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.questions_manager import QuestionManager
+logger = logging.getLogger(__name__)
 
 
 class ReviewTab(QWidget):
     flashcard_modified: Signal = Signal()
 
-    def __init__(self, questions_manager: QuestionManager):
+    def __init__(self):
         super().__init__()
-
-        self._questions_manager = questions_manager
         self._correct_btn: QPushButton = QPushButton("✓ Correct")
         self._wrong_btn: QPushButton = QPushButton("✗ Wrong")
         self._start_review_btn: QPushButton = QPushButton("▶ Start Review")
@@ -56,6 +58,19 @@ class ReviewTab(QWidget):
         self._question_stack = QStackedWidget()
         self._modify_btns_stack = QStackedWidget()
         self._build()
+
+    def question_to_review(self) -> Dict[str, Any]:
+        if self._question_to_review is None:
+            response = requests.get(
+                f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards?review=true"
+            )
+            if response.status_code != 200:
+                logger.error("Request failed with status code:", response.status_code)
+                return {}
+
+            self._question_to_review = response.json()
+
+        return self._question_to_review
 
     def _build(self):
         self._modify_question_field.setFixedSize(300, 100)
@@ -103,7 +118,12 @@ class ReviewTab(QWidget):
 
         # initially disabled, must start review first
         self._correct_btn.setEnabled(False)
-        self._start_review_btn.setEnabled(self._questions_manager.count() > 0)
+        self._start_review_btn.setEnabled(False)
+        response = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/count"
+        )
+        print(response.text)
+        self._start_review_btn.setEnabled(int(response.text) > 0)
         self._stop_review_btn.setEnabled(False)
         self._wrong_btn.setEnabled(False)
 
@@ -136,7 +156,15 @@ class ReviewTab(QWidget):
 
     def _on_stop_review(self):
         self._stop_review_btn.setEnabled(False)
-        self._start_review_btn.setEnabled(self._questions_manager.count() > 0)
+        response = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/count"
+        )
+
+        if response.status_code != 200:
+            logger.error("Request failed with status code:", response.status_code)
+            return
+
+        self._start_review_btn.setEnabled(int(response.text) > 0)
         self._end_review()
 
     def _modify_flashcard(self):
@@ -166,7 +194,17 @@ class ReviewTab(QWidget):
         self._modify_btns_stack.setCurrentWidget(self._modify_btn)
         self._question_stack.setCurrentWidget(self._question_label)
         self._current_question["question"] = self._modify_question_field.toPlainText()
-        self._questions_manager.modify(self._current_question)
+
+        response = requests.put(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{self._current_question['id']}",
+            json=self._current_question,
+        )
+
+        if response.status_code != 200:
+            logger.error("Request failed with status code:", response.status_code)
+            return
+
+        # self._questions_manager.modify(self._current_question)
         self._question_label.setText(self._current_question["question"])
 
         self._correct_btn.setEnabled(True)
@@ -174,10 +212,18 @@ class ReviewTab(QWidget):
         self.flashcard_modified.emit()
 
     def _set_question_label(self):
-        count: int = self._questions_manager.count()
+        # count: int = self._questions_manager.count()
+        count = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/count"
+        )
+
+        if count.status_code != 200:
+            logger.error("Request failed with status code:", count.status_code)
+            return
+
         self._question_label.setText(
-            f"There are {count} flashcards to review"
-            if count > 0
+            f"There are {count.text} flashcards to review"
+            if int(count.text) > 0
             else "All done for today!"
         )
 
@@ -188,27 +234,75 @@ class ReviewTab(QWidget):
         self._correct_btn.setEnabled(False)
         self._wrong_btn.setEnabled(False)
 
-        # reset question manager generator
-        self._questions_manager.reset()
+        # reset question manager generato
+        self._question_to_review = None
+        self._pointer = 0
+        # self._questions_manager.reset()
+
+    def _get_next_repeat(self, times, last_repeated):
+        match times:
+            case 0:
+                delta = timedelta(hours=0)
+            case 1:
+                delta = timedelta(days=1)
+            case 2:
+                delta = timedelta(days=3)
+            case 3:
+                delta = timedelta(days=7)
+            case 4:
+                delta = timedelta(days=14)
+            case 5:
+                delta = timedelta(days=31)
+            case _:
+                return None
+
+        return datetime.fromtimestamp(last_repeated/1000) + delta
+
+    def correct(self, question: Dict[str, Any]) -> None:
+        question["lastRepeated"] = int(datetime.now().timestamp() * 1000)
+        question["timesRepeated"] += 1
+        next_repeat = self._get_next_repeat(
+            question["timesRepeated"], question["lastRepeated"]
+        )
+        question["nextRepeat"] = (
+            int(next_repeat.timestamp()*1000) if next_repeat is not None else next_repeat
+        )
+
+        response = requests.put(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}",
+            json=question,
+        )
+
+        if response.status_code != 200:
+            logger.error("Request failed with status code:", response.status_code)
+            return
+        
 
     def _on_correct(self):
         if self._current_question is None:
             return
 
-        self._questions_manager.correct(self._current_question)
+        self.correct(self._current_question)
         self.flashcard_modified.emit()
 
-        next_question: Dict[str, Any] | None = (
-            self._questions_manager.get_next_to_repeat()
+        request = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/next"
         )
 
-        if next_question is None:
+        if request.status_code == 404:
             self._end_review()
             return
+        
+        elif request.status_code != 200:
+            logger.error("Request failed with status code:", request.status_code)
+            return
 
+        print(request.json())
+        next_question = request.json()
         self._question_label.setText(next_question["question"])
-        self._subject_label.setText(next_question["subject"])
+        self._subject_label.setText(next_question["course"])
         self._current_question = next_question
+
 
     def _on_start_review(self):
         self._modify_btn.setEnabled(True)
@@ -217,43 +311,76 @@ class ReviewTab(QWidget):
         self._stop_review_btn.setEnabled(True)
         self._start_review_btn.setEnabled(False)
 
-        next_question: Dict[str, Any] | None = (
-            self._questions_manager.get_next_to_repeat()
+        request = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/next"
         )
 
-        if next_question is None:
+        if request.status_code == 404:
             self._end_review()
             return
+        
+        elif request.status_code != 200:
+            logger.error("Request failed with status code:", request.status_code)
+            return
 
+        print(request.json())
+        next_question = request.json()
         self._question_label.setText(next_question["question"])
-        self._subject_label.setText(next_question["subject"])
+        self._subject_label.setText(next_question["course"])
         self._current_question = next_question
+
+    def wrong(self, question: Dict[str, Any]) -> None:
+        question["lastRepeated"] = datetime.now().timestamp() * 1000
+        question["timesRepeated"] = 0
+        question["nextRepeat"] = int(
+            (datetime.now() + timedelta(hours=1)).timestamp() * 1000
+        )
+
+        response = requests.put(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}",
+            json=question,
+        )
+
+        if response.status_code != 200:
+            logger.error("Request failed with status code:", response.status_code)
+            return
 
     def _on_wrong(self):
         if self._current_question is None:
             return
 
-        self._questions_manager.wrong(self._current_question)
+        self.wrong(self._current_question)
         self.flashcard_modified.emit()
 
-        next_question: Dict[str, Any] | None = (
-            self._questions_manager.get_next_to_repeat()
+        request = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/next"
         )
 
-        if next_question is None:
+        if request.status_code == 404:
             self._end_review()
             return
+        
+        elif request.status_code != 200:
+            logger.error("Request failed with status code:", request.status_code)
+            return
 
+        print(request.json())
+        next_question = request.json()
         self._question_label.setText(next_question["question"])
-        self._subject_label.setText(next_question["subject"])
+        self._subject_label.setText(next_question["course"])
         self._current_question = next_question
 
     def on_flashcard_added(self):
         self._start_review_btn.setEnabled(True)
-
-        self._question_label.setText(
-            f"There are {self._questions_manager.count()} flashcards to review"
+        count = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/count"
         )
+
+        if count.status_code != 200:
+            logger.error("Request failed with status code:", count.status_code)
+            return
+
+        self._question_label.setText(f"There are {count.text} flashcards to review")
 
     @property
     def start_review_btn(self):

@@ -42,11 +42,11 @@ from src.config import (
     modify_subject,
     remove_subject,
 )
-from src.gui.tabs.timer.progress_circle import ProgressCircle
-from src.gui.tray import Tray
+from src.frontend.tabs.timer.progress_circle import ProgressCircle
+from tray import Tray
 from src.questions_manager import QuestionManager
 from src.sound import play_sound
-from src.timer.pomlet_timer import PomletTimer, SessionType
+from src.frontend.timer.pomlet_timer import PomletTimer, SessionType
 
 logger = logging.getLogger(__name__)
 

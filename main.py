@@ -17,17 +17,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
-from math import log
 import os
 import sys
+import time
 
 import qdarktheme
 from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
+import requests
 
-from src.gui.pomlet_window import PomletWindow
 from src.config import get_config_path
+from pomlet_window import PomletWindow
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +49,21 @@ def setup_logger():
 
     logger.debug("Dev mode: %s, logs at: %s", dev_mode, log_path)
 
+
+
 if __name__ == "__main__":
     load_dotenv()
     setup_logger()
+    
+    while True:
+        try:
+            response = requests.get(f"http://{os.getenv('URL')}:{os.getenv('PORT')}/")
+            print("Backend status: %s", response.status_code)
+            if response.status_code == 200:
+                break
+            time.sleep(0.5)
+        except requests.exceptions.ConnectionError:
+            time.sleep(0.5)
 
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("icon.png"))

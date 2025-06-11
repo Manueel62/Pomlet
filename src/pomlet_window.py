@@ -20,13 +20,13 @@ from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from src.config import get_subjects
-from src.gui.tabs.add_flashcard import AddTab
-from src.gui.tabs.list_flashcard import ListTab
-from src.gui.tabs.review_flashcard import ReviewTab
-from src.gui.tabs.timer.timer_tab import TimerTab
-from src.gui.tray import Tray
+from src.frontend.tabs.add_flashcard import AddTab
+from src.frontend.tabs.list_flashcard import ListTab
+from src.frontend.tabs.review_flashcard import ReviewTab
+from src.frontend.tabs.timer.timer_tab import TimerTab
+from tray import Tray
 from src.questions_manager import QuestionManager
-from src.timer.pomlet_timer import PomletTimer
+from src.frontend.timer.pomlet_timer import PomletTimer
 
 
 class PomletWindow(QWidget):
@@ -40,16 +40,16 @@ class PomletWindow(QWidget):
         self._tray: Tray = Tray()
 
         self._questions_manager: QuestionManager = QuestionManager()
-        self._to_repeat = self._questions_manager._questions_to_repeat
+        # self._to_repeat = self._questions_manager._questions_to_repeat
         self._add_tab: AddTab = AddTab(self._questions_manager)
-        self._review_tab: ReviewTab = ReviewTab(self._questions_manager)
+        self._review_tab: ReviewTab = ReviewTab()
         self._list_tab: ListTab = ListTab(self._questions_manager)
         self._timer_tab: TimerTab = TimerTab(self._questions_manager, self._timer, self._tray)
 
         self._connect()
         self._build_tabs()
-        self._tray.showMsg(
-            f"Welcome back! There are {self._questions_manager.count()} flashcards to review today."
+        self._tray.showMsg(""
+            # f"Welcome back! There are {self._questions_manager.count()} flashcards to review today."
         )
 
     def _connect(self):
@@ -97,5 +97,5 @@ class PomletWindow(QWidget):
         layout.addWidget(self.tabs)
 
     def closeEvent(self, ev: QCloseEvent):
-        self._questions_manager.save_questions()
+        # self._questions_manager.save_questions()
         ev.accept()

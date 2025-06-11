@@ -17,10 +17,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import calendar
+import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 from venv import logger
 
+import requests
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -44,8 +46,6 @@ from src.questions_manager import QuestionManager
 class ListTab(QWidget):
     def __init__(self, questions_manager: QuestionManager):
         super().__init__()
-        self._questions_manager = questions_manager
-
         self._tree = QTreeWidget()
         self._tree.setHeaderLabels(["Question", "#", "Next (days)", "ID"])
         self._id_index = 3
@@ -78,9 +78,16 @@ class ListTab(QWidget):
         if item.parent() is None:
             return
 
-        question_id: int = int(item.text(self._id_index).strip())
-        question = self._questions_manager.find_by_id(question_id)
+        # question_id: int = int(item.text(self._id_index).strip())
+        # request = requests.get(
+        #     f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question_id}"
+        # )
+        request = requests.get(item.text(self._id_index))
+        if request.status_code != 200:
+            logger.error("Request failed with status code:", request.status_code)
+            return
 
+        question = request.json()
         if question is None:
             return
 
@@ -116,11 +123,11 @@ class ListTab(QWidget):
 
         add_section("Question", stack_widget)
 
-        add_section("Repetitions", get_content(str(question["repeated"])))
+        add_section("Repetitions", get_content(str(question["timesRepeated"])))
         add_section(
             "Last Repetition",
             get_content(
-                datetime.fromisoformat(question["last_repeated"]).strftime(
+                datetime.fromtimestamp(question["lastRepeated"] / 1000).strftime(
                     "%Y-%m-%d %H:%M"
                 )
             ),
@@ -128,7 +135,7 @@ class ListTab(QWidget):
         add_section(
             "Next Repetition",
             get_content(
-                datetime.fromisoformat(question["next_repeat"]).strftime(
+                datetime.fromtimestamp(question["nextRepeat"] / 1000).strftime(
                     "%Y-%m-%d %H:%M"
                 )
             ),
@@ -191,7 +198,7 @@ class ListTab(QWidget):
         )
 
         if confirm == QMessageBox.StandardButton.Yes:
-            self._questions_manager.remove(question)
+            # self._questions_manager.remove(question)
             self._close_dialog(dialog)
 
     def _on_modify_question(self):
@@ -211,11 +218,13 @@ class ListTab(QWidget):
             return
 
         question["question"] = self._modify_text_edit.toPlainText()
-        self._questions_manager.modify(question)
+        # self._questions_manager.modify(question)
         self._close_dialog(dialog)
 
     def _get_next_repeat_days(self, question: Dict[str, Any]) -> str:
-        next_repeat: datetime = datetime.fromisoformat(question["next_repeat"])
+        next_repeat: datetime = datetime.fromtimestamp(
+            question["nextRepeat"] / 1000
+        )  # seconds
         now: datetime = datetime.now()
 
         if next_repeat < now:
@@ -230,15 +239,34 @@ class ListTab(QWidget):
         days: int = next_repeat.timetuple().tm_yday - now.timetuple().tm_yday
         if days < 1:
             return "Later Today"
-        
+
         return str(days)
+
+    def group_by_subject(self, questions):
+        grouped = {}
+
+        for question in questions:
+            subject = question["course"]
+            if subject not in grouped:
+                grouped[subject] = []
+            grouped[subject].append(question)
+        return grouped
 
     def refresh(self):
         """Rebuild the tree from current questions."""
         logger.debug("Refreshing ListTab tree...")
 
         self._tree.clear()
-        grouped = self._questions_manager.get_all_grouped_by_subject()
+        questions = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards"
+        )
+
+        if questions.status_code != 200:
+            logger.error("Request failed with status code:", questions.status_code)
+            return
+
+        questions = questions.json()["_embedded"]["flashcards"]
+        grouped = self.group_by_subject(questions)
 
         for subject, questions in grouped.items():
             subject_item = QTreeWidgetItem([subject])
@@ -247,7 +275,7 @@ class ListTab(QWidget):
             self._tree.addTopLevelItem(subject_item)
 
             for question in questions:
-                n_reps: str = str(question["repeated"])
+                n_reps: str = str(question["timesRepeated"])
 
                 # in day of year
                 next_rep: str = self._get_next_repeat_days(question)
@@ -256,7 +284,7 @@ class ListTab(QWidget):
                         question["question"].strip(),
                         n_reps.strip(),
                         next_rep,
-                        str(question["id"]),
+                        str(question["_links"]["self"]["href"]),
                     ]
                 )
                 subject_item.addChild(question_item)

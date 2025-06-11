@@ -18,55 +18,59 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import json
 import logging
+import os
+import re
 import shutil
 from copy import copy
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
-from src.config import get_config_path
+import requests
+
+# from src.config import get_config_path
 
 logger = logging.getLogger(__name__)
 
 
 class QuestionManager:
     def __init__(self) -> None:
-        self._questions = self._load_questions()
-        self._questions_to_repeat = self._get_flashcards_to_repeat()
+        # self._questions = self._load_questions()
+        # self._questions_to_repeat = self._get_flashcards_to_repeat()
         self._operations = 0
 
-    def _get_question_path(self):
-        return get_config_path().parent.joinpath("questions.json")
+    # def _get_question_path(self):
+    #     return get_config_path().parent.joinpath("questions.json")
 
-    def _load_questions(self):
-        question_path: Path = self._get_question_path()
-        if not question_path.exists():
-            with open(question_path, "w", encoding="utf-8") as f:
-                json.dump([], f)
+    # def _load_questions(self):
+    #     question_path: Path = self._get_question_path()
+    #     if not question_path.exists():
+    #         with open(question_path, "w", encoding="utf-8") as f:
+    #             json.dump([], f)
 
-        with open(question_path, encoding="utf-8") as f:
-            return json.load(f)
+    #     with open(question_path, encoding="utf-8") as f:
+    #         return json.load(f)
 
-    def _clean_backups(self):
-        question_path: Path = self._get_question_path()
-        backups_dir: Path = question_path.parent.joinpath("backups")
-        creations: List[Path] = list(backups_dir.iterdir())
-        logger.debug("MAX %s", max(map(lambda x: x.stem, creations)))
-        logger.debug("MIN %s", min(map(lambda x: x.stem, creations)))
+    # def _clean_backups(self):
+    #     question_path: Path = self._get_question_path()
+    #     backups_dir: Path = question_path.parent.joinpath("backups")
+    #     creations: List[Path] = list(backups_dir.iterdir())
+    #     logger.debug("MAX %s", max(map(lambda x: x.stem, creations)))
+    #     logger.debug("MIN %s", min(map(lambda x: x.stem, creations)))
 
-        # ascending
-        indexes: List[int] = sorted(
-            list(range(len(creations))),
-            key=lambda x: datetime.fromisoformat(
-                self._filename_to_isoformat(creations[x].stem)
-            ),
-        )
+    #     # ascending
+    #     indexes: List[int] = sorted(
+    #         list(range(len(creations))),
+    #         key=lambda x: datetime.fromisoformat(
+    #             self._filename_to_isoformat(creations[x].stem)
+    #         ),
+    #     )
 
-        # keep last 10 backups
-        for i in indexes[:-10]:
-            creations[i].unlink()
+    #     # keep last 10 backups
+    #     for i in indexes[:-10]:
+    #         creations[i].unlink()
 
-        self._operations = 0
+    #     self._operations = 0
 
     def _filename_to_isoformat(self, filename: str):
         return filename.replace("_", ":")
@@ -74,43 +78,36 @@ class QuestionManager:
     def _isoformat_to_filename(self, isoformat: str):
         return isoformat.replace(":", "_")
 
-    def save_questions(self):
-        if self._operations > 50:
-            self._clean_backups()
+    # def save_questions(self):
+    #     # if self._operations > 50:
+    #     #     self._clean_backups()
 
-        question_path: Path = self._get_question_path()
-        backups_dir = question_path.parent.joinpath("backups")
-        backups_dir.mkdir(exist_ok=True)
-        shutil.copyfile(
-            question_path,
-            backups_dir.joinpath(
-                self._isoformat_to_filename(datetime.now().isoformat())
-            ),
-        )
+    #     question_path: Path = self._get_question_path()
+    #     backups_dir = question_path.parent.joinpath("backups")
+    #     backups_dir.mkdir(exist_ok=True)
+    #     shutil.copyfile(
+    #         question_path,
+    #         backups_dir.joinpath(
+    #             self._isoformat_to_filename(datetime.now().isoformat())
+    #         ),
+    #     )
 
-        self._operations += 1
+    #     self._operations += 1
 
-        with open(question_path, "w", encoding="utf-8") as f:
-            return json.dump(self._questions, f)
+    #     with open(question_path, "w", encoding="utf-8") as f:
+    #         return json.dump(self._questions, f)
 
     def _get_flashcards_to_repeat(self):
-        qs = []
-        for q in self._questions:
-            if (
-                q["next_repeat"] is not None
-                and datetime.fromisoformat(q["next_repeat"]) <= datetime.now()
-            ):  # None already repeated enough
-                qs.append(q)
+        questions = []
+        response = requests.get(f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards")
+        if response.status_code != 200:
+            logger.error("Request failed with status code:", response.status_code)
+            return questions
+        
+        return response.json()
 
-        # shuffle(qs)
-        # do not shuffle -> order next_repeat
-        qs = sorted(qs, key=lambda x: x["next_repeat"])
-
-        for q in qs:
-            yield q
-
-    def count(self):
-        return len([x for x in self._get_flashcards_to_repeat()])
+    # def count(self):
+    #     return len([x for x in self._get_flashcards_to_repeat()])
 
     def correct(self, question: Dict[str, Any]) -> None:
         stored_question = self.find_question(question)
@@ -123,17 +120,17 @@ class QuestionManager:
             next_repeat.isoformat() if next_repeat is not None else next_repeat
         )
 
-        self.save_questions()
+        # self.save_questions()
 
     def modify(self, question: Dict[str, Any]) -> None:
         stored_question = self.find_question(question)
         stored_question["question"] = question["question"]
-        self.save_questions()
+        # self.save_questions()
 
     def _id(self):
-        if len(self._questions) == 0:
-            return 0
-        return max([x["id"] for x in self._questions]) + 1
+        # if len(self._questions) == 0:
+        return 0
+        # return max([x["id"] for x in self._questions]) + 1
 
     def add_question(self, question_text: str, subject: str) -> Dict[str, Any] | None:
         now = datetime.now().isoformat()
@@ -153,8 +150,8 @@ class QuestionManager:
             return None
 
         question["next_repeat"] = next_repeat.isoformat()
-        self._questions.append(question)
-        self.save_questions()
+        # self._questions.append(question)
+        # self.save_questions()
 
         # reset generator of questions to be repeated
         self.reset()
@@ -187,17 +184,18 @@ class QuestionManager:
         stored_question["next_repeat"] = (
             datetime.now() + timedelta(hours=1)
         ).isoformat()
-        self.save_questions()
+        # self.save_questions()
 
     def find_question(self, question: Dict[str, Any]):
-        for stored_question in self._questions:
-            if stored_question["id"] == question["id"]:
-                return stored_question
+        # for stored_question in self._questions:
+        #     if stored_question["id"] == question["id"]:
+        #         return stored_question
 
         raise ValueError("Question not found")
 
     def get_next_to_repeat(self):
-        return next(self._questions_to_repeat, None)
+        ...
+        # return next(self._questions_to_repeat, None)
 
     def reset(self):
         self._questions_to_repeat = self._get_flashcards_to_repeat()
@@ -205,11 +203,11 @@ class QuestionManager:
     def get_all_grouped_by_subject(self):
         grouped_questions: Dict[str, List[Dict[str, Any]]] = {}
 
-        for question in self._questions:
-            if question["subject"] not in grouped_questions:
-                grouped_questions[question["subject"]] = []
+        # for question in self._questions:
+        #     if question["subject"] not in grouped_questions:
+        #         grouped_questions[question["subject"]] = []
 
-            grouped_questions[question["subject"]].append(question)
+        #     grouped_questions[question["subject"]].append(question)
 
         for group in grouped_questions:
             grouped_questions[group] = sorted(
@@ -219,14 +217,16 @@ class QuestionManager:
         return grouped_questions
 
     def find_by_id(self, id: int):
-        for question in self._questions:
-            if question["id"] == id:
-                return copy(question)
+        # for question in self._questions:
+            # if question["id"] == id:
+            #     return copy(question)
+        # raise ValueError("Question not found")
+        ...
 
     def remove_all_by_subject(self, subject: str):
         logger.debug("Removing all questions for subject: %s", subject)
-        self._questions = list(filter(lambda x: x["subject"] != subject, self._questions))
-        self.save_questions()
+        # self._questions = list(filter(lambda x: x["subject"] != subject, self._questions))
+        # self.save_questions()
 
     def remove(self, question: Dict[str, Any]):
         logger.debug("Removing question: %s", question)
@@ -234,8 +234,7 @@ class QuestionManager:
         if found_question is None:
             return
 
-        self._questions.remove(found_question)
-        self.save_questions()
+        # self.save_questions()
 
     @property
     def questions_to_repeat(self):
