@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from src.timer.session_type import SessionType
 
 from src.calendar_manager import create_calendar_event
 from src.config import (
@@ -42,11 +43,10 @@ from src.config import (
     modify_subject,
     remove_subject,
 )
-from src.frontend.tabs.timer.progress_circle import ProgressCircle
-from tray import Tray
-from src.questions_manager import QuestionManager
+from src.tabs.timer.progress_circle import ProgressCircle
+from src.tray import Tray
 from src.sound import play_sound
-from src.frontend.timer.pomlet_timer import PomletTimer, SessionType
+from src.timer.pomlet_timer import PomletTimer
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class TimerTab(QWidget):
     subjects_updated = Signal(str)
 
     def __init__(
-        self, questions_manager: QuestionManager, timer: PomletTimer, tray: Tray
+        self, timer: PomletTimer, tray: Tray
     ):
         super().__init__()
 
@@ -65,7 +65,6 @@ class TimerTab(QWidget):
         self._timer = timer
         self._tray = tray
 
-        self._questions_manager: QuestionManager = questions_manager
         self._subjects: List[str] = get_subjects()
         self._subject_box = QComboBox()
         self._add_btn = QPushButton("+")
@@ -176,7 +175,8 @@ class TimerTab(QWidget):
             return
 
         remove_subject(self._subject_box.currentText())
-        self._questions_manager.remove_all_by_subject(self._subject_box.currentText())
+
+        # self._questions_manager.remove_all_by_subject(self._subject_box.currentText())
 
         self._subject_box.removeItem(self._subject_box.currentIndex())
         if self._subject_box.count() > 0:

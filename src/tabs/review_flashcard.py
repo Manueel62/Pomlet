@@ -239,37 +239,9 @@ class ReviewTab(QWidget):
         self._pointer = 0
         # self._questions_manager.reset()
 
-    def _get_next_repeat(self, times, last_repeated):
-        match times:
-            case 0:
-                delta = timedelta(hours=0)
-            case 1:
-                delta = timedelta(days=1)
-            case 2:
-                delta = timedelta(days=3)
-            case 3:
-                delta = timedelta(days=7)
-            case 4:
-                delta = timedelta(days=14)
-            case 5:
-                delta = timedelta(days=31)
-            case _:
-                return None
-
-        return datetime.fromtimestamp(last_repeated/1000) + delta
-
     def correct(self, question: Dict[str, Any]) -> None:
-        question["lastRepeated"] = int(datetime.now().timestamp() * 1000)
-        question["timesRepeated"] += 1
-        next_repeat = self._get_next_repeat(
-            question["timesRepeated"], question["lastRepeated"]
-        )
-        question["nextRepeat"] = (
-            int(next_repeat.timestamp()*1000) if next_repeat is not None else next_repeat
-        )
-
         response = requests.put(
-            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}",
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}/correct",
             json=question,
         )
 
@@ -330,14 +302,8 @@ class ReviewTab(QWidget):
         self._current_question = next_question
 
     def wrong(self, question: Dict[str, Any]) -> None:
-        question["lastRepeated"] = datetime.now().timestamp() * 1000
-        question["timesRepeated"] = 0
-        question["nextRepeat"] = int(
-            (datetime.now() + timedelta(hours=1)).timestamp() * 1000
-        )
-
         response = requests.put(
-            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}",
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}/wrong",
             json=question,
         )
 

@@ -27,7 +27,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemT
 
 from src import __version__
 import assets  # tray icon
-from src.frontend.timer.session_type import SessionType
+from src.timer.session_type import SessionType
 
 logger = logging.getLogger(__name__)
 

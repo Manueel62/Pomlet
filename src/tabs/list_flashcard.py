@@ -40,11 +40,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.questions_manager import QuestionManager
-
 
 class ListTab(QWidget):
-    def __init__(self, questions_manager: QuestionManager):
+    def __init__(self):
         super().__init__()
         self._tree = QTreeWidget()
         self._tree.setHeaderLabels(["Question", "#", "Next (days)", "ID"])
@@ -82,7 +80,11 @@ class ListTab(QWidget):
         # request = requests.get(
         #     f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question_id}"
         # )
-        request = requests.get(item.text(self._id_index))
+        # request = requests.get(item.text(self._id_index))
+        request = requests.get(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{item.text(self._id_index)}"
+        )
+
         if request.status_code != 200:
             logger.error("Request failed with status code:", request.status_code)
             return
@@ -199,6 +201,13 @@ class ListTab(QWidget):
 
         if confirm == QMessageBox.StandardButton.Yes:
             # self._questions_manager.remove(question)
+            request = requests.delete(
+                f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}"
+            )
+
+            if request.status_code == 200:
+                logger.debug("Flashcard deleted. ID: %s", question["id"])
+
             self._close_dialog(dialog)
 
     def _on_modify_question(self):
@@ -219,9 +228,20 @@ class ListTab(QWidget):
 
         question["question"] = self._modify_text_edit.toPlainText()
         # self._questions_manager.modify(question)
+        request = requests.put(
+            f"http://{os.getenv('URL')}:{os.getenv('PORT')}/flashcards/{question['id']}",
+            json=question,
+        )
+
+        if request.status_code != 200:
+            logger.warning("Error while updating the question, ID: %s", question["id"])
+            return
+
         self._close_dialog(dialog)
 
     def _get_next_repeat_days(self, question: Dict[str, Any]) -> str:
+        if question["nextRepeat"] is None:
+            return "-"
         next_repeat: datetime = datetime.fromtimestamp(
             question["nextRepeat"] / 1000
         )  # seconds
@@ -246,7 +266,7 @@ class ListTab(QWidget):
         grouped = {}
 
         for question in questions:
-            subject = question["course"]
+            subject = question["chapter"]["name"]
             if subject not in grouped:
                 grouped[subject] = []
             grouped[subject].append(question)
@@ -264,8 +284,9 @@ class ListTab(QWidget):
         if questions.status_code != 200:
             logger.error("Request failed with status code:", questions.status_code)
             return
-
-        questions = questions.json()["_embedded"]["flashcards"]
+        
+        questions = questions.json()
+        print(questions)
         grouped = self.group_by_subject(questions)
 
         for subject, questions in grouped.items():
@@ -284,7 +305,7 @@ class ListTab(QWidget):
                         question["question"].strip(),
                         n_reps.strip(),
                         next_rep,
-                        str(question["_links"]["self"]["href"]),
+                        str(question["id"]),
                     ]
                 )
                 subject_item.addChild(question_item)

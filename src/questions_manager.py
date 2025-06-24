@@ -132,31 +132,7 @@ class QuestionManager:
         return 0
         # return max([x["id"] for x in self._questions]) + 1
 
-    def add_question(self, question_text: str, subject: str) -> Dict[str, Any] | None:
-        now = datetime.now().isoformat()
-        question = {
-            "id": self._id(),
-            "question": question_text,
-            "last_repeated": now,
-            "created": now,
-            "repeated": 0,
-            "subject": subject,
-        }
-        next_repeat = self._get_next_repeat(
-            question["repeated"], question["last_repeated"]
-        )
 
-        if next_repeat is None:
-            return None
-
-        question["next_repeat"] = next_repeat.isoformat()
-        # self._questions.append(question)
-        # self.save_questions()
-
-        # reset generator of questions to be repeated
-        self.reset()
-
-        return question
 
     def _get_next_repeat(self, times, last_repeated):
         match times:

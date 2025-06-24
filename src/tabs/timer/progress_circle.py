@@ -20,7 +20,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QLabel, QWidget
 
-from src.frontend.timer.session_type import SessionType
+from src.timer.session_type import SessionType
 
 
 class ProgressCircle(QWidget):
