@@ -77,16 +77,26 @@ def save_config(work_duration, break_duration, session_types):
     _write_config(config)
 
 
+def toggle_subject(subject: str, set: bool = None):
+    logger.info("Toggle subject: %s", subject)
+
+    config = _load_config()
+    config[subject]["enabled"] = not config[subject]["enabled"] if set is None else set
+    _write_config(config)
+
+
 def add_subject(subject: str):
     logger.debug("Adding subject: %s", subject)
 
     config = _load_config()
-    config[subject] = {
-        "work_duration": 25,
-        "break_duration": 5,
-    }
+    config[subject] = {"work_duration": 25, "break_duration": 5, "enabled": True}
 
     _write_config(config)
+
+
+def is_subject_enabled(subject: str):
+    config = _load_config()
+    return config[subject]["enabled"]
 
 
 def remove_subject(subject: str):
@@ -100,11 +110,13 @@ def remove_subject(subject: str):
     _write_config(config)
 
 
-def get_subjects():
+def get_subjects(enabled: bool = True):
     if not get_config_path().exists():
         return []
     config = _load_config()
-    return list(config.keys())
+    return (
+        [x for x in config if config[x]["enabled"]] if enabled else list(config.keys())
+    )
 
 
 def _write_config(config: Dict[str, Any]):

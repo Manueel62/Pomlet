@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from gui.tabs.list_flashcard import ListTab
 
 from src.config import get_subjects
 from src.questions_manager import QuestionManager
@@ -36,14 +37,20 @@ logger = logging.getLogger(__name__)
 
 class AddTab(QWidget):
     flashcard_added: Signal = Signal()
-    def __init__(self, questions_manager: QuestionManager):
+    def __init__(self, questions_manager: QuestionManager, list_tab: ListTab):
         super().__init__()
         self._questions_manager = questions_manager
         self._subject_box: QComboBox = QComboBox()
         self._add_flashcard_btn = QPushButton("Add Flashcard")
         self._question_input = QTextEdit()
+        self._list_tab = list_tab
 
         self._build()
+
+    def _reset_subject_box(self):
+        self._subject_box.clear()
+        self._subject_box.addItems(get_subjects())
+
 
     def _build(self):
         layout = QVBoxLayout(self)
@@ -54,6 +61,8 @@ class AddTab(QWidget):
 
         self._question_input.setFixedHeight(100)
         self._add_info_label: QLabel = QLabel("")
+
+        # self._list_tab.subject_modified.connect(self._reset_subject_box)
 
         shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
         shortcut.activated.connect(self._on_add_flashcard_clicked)

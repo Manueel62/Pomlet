@@ -26,8 +26,8 @@ from PySide6.QtGui import QAction, QIcon, QPainter, QPixmap, QRegion
 from PySide6.QtWidgets import QApplication, QLabel, QMenu, QMessageBox, QSystemTrayIcon
 
 from src import __version__
-import src.frontend.assets  # tray icon
-from src.frontend.timer.session_type import SessionType
+import src.gui.assets  # tray icon
+from src.gui.timer.session_type import SessionType
 
 logger = logging.getLogger(__name__)
 

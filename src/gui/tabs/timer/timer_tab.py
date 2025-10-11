@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.tabs.list_flashcard import ListTab
 from src.calendar_manager import create_calendar_event
 from src.config import (
     add_subject,
@@ -43,10 +44,10 @@ from src.config import (
     remove_subject,
 )
 from src.gui.tabs.timer.progress_circle import ProgressCircle
+from src.gui.timer.pomlet_timer import PomletTimer, SessionType
 from src.gui.tray import Tray
 from src.questions_manager import QuestionManager
 from src.sound import play_sound
-from src.timer.pomlet_timer import PomletTimer, SessionType
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,11 @@ class TimerTab(QWidget):
     subjects_updated = Signal(str)
 
     def __init__(
-        self, questions_manager: QuestionManager, timer: PomletTimer, tray: Tray
+        self,
+        questions_manager: QuestionManager,
+        timer: PomletTimer,
+        tray: Tray,
+        list_tab: ListTab,
     ):
         super().__init__()
 
@@ -73,6 +78,8 @@ class TimerTab(QWidget):
 
         self._work_started_at = None
 
+        self._list_tab = list_tab
+        self._list_tab.subject_modified.connect(self._refresh_subjects)
         self._work_slider: QSlider = QSlider(Qt.Orientation.Horizontal)
         self._break_slider: QSlider = QSlider(Qt.Orientation.Horizontal)
         self._work_value_label: QLabel = QLabel()
@@ -84,9 +91,13 @@ class TimerTab(QWidget):
         self._circle = ProgressCircle()
         self._long_break_needed = False
 
-
         self._build()
         self._reset()
+
+    def _refresh_subjects(self):
+        self._subjects = get_subjects()
+        self._subject_box.clear()
+        self._subject_box.addItems(self._subjects)
 
     def _build(self):
         layout = QVBoxLayout(self)
@@ -219,7 +230,7 @@ class TimerTab(QWidget):
         logger.debug(
             "Session started, timer' previous state: %s",
             self._timer.done_session_type(),
-        )            
+        )
 
         # coming from work session
         if self._timer.done_session_type() == SessionType.WORK:
@@ -273,7 +284,7 @@ class TimerTab(QWidget):
                 self._circle.increase_n_sessions()
                 msg = "Time's up! Take a break!"
                 self._push_on_calendar()
-                
+
                 self._start_btn.setText("▶ Start Break")
                 if self._circle.n_sessions >= 4:
                     self._circle.update_progress(0, f"{self.LONG_BREAK}:00")
@@ -349,18 +360,18 @@ class TimerTab(QWidget):
 
         self._work_value_label.setText(f"{self._default_work} min")
         self._break_value_label.setText(f"{self._default_break} min")
-        
+
         if self._long_break_needed:
             self._circle.update_progress(0, f"{self.LONG_BREAK:02}:00")
             return
-        
+
         if self._timer.done_session_type() is SessionType.WORK:
             self._circle.update_progress(0, f"{self._default_break:02}:00")
         elif self._timer.done_session_type() is SessionType.BREAK:
             self._circle.update_progress(0, f"{self._default_work:02}:00")
 
     def _push_on_calendar(self):
-        self._circle.set_icon("🔄 📅")        
+        self._circle.set_icon("🔄 📅")
         title = f"{self._subject_box.currentText()} Pomodoro"
         create_calendar_event(title, self._work_started_at, datetime.now())
         self._circle.reset_icon()
@@ -401,13 +412,20 @@ class TimerTab(QWidget):
     def _work_changed(self, val: int):
         logger.debug("Work slider changed to %s", self._timer.done_session_type())
         self._work_value_label.setText(f"{val} min")
-        if self._timer.done_session_type() in [SessionType.BREAK, SessionType.NONE, SessionType.LONG_BREAK]:
+        if self._timer.done_session_type() in [
+            SessionType.BREAK,
+            SessionType.NONE,
+            SessionType.LONG_BREAK,
+        ]:
             self._circle.update_progress(0, f"{val:02}:00")
         modify_subject(self._subject_box.currentText(), val, self._break_slider.value())
 
     def _break_changed(self, val):
         self._break_value_label.setText(f"{val} min")
-        if self._timer.done_session_type() is SessionType.WORK and not self._long_break_needed:
+        if (
+            self._timer.done_session_type() is SessionType.WORK
+            and not self._long_break_needed
+        ):
             self._circle.update_progress(0, f"{val:02}:00")
 
         modify_subject(self._subject_box.currentText(), self._work_slider.value(), val)

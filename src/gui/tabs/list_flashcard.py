@@ -21,7 +21,9 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from venv import logger
 
-from PySide6.QtCore import Qt
+import PySide6
+import PySide6.QtCore
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog,
     QFrame,
@@ -38,18 +40,21 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from config import get_subjects, is_subject_enabled, toggle_subject
 from src.questions_manager import QuestionManager
 
 
 class ListTab(QWidget):
+    subject_modified: Signal = Signal()
+
     def __init__(self, questions_manager: QuestionManager):
         super().__init__()
         self._questions_manager = questions_manager
 
         self._tree = QTreeWidget()
-        self._tree.setHeaderLabels(["Question", "#", "Next (days)", "ID"])
+        self._tree.setHeaderLabels(["Question", "#", "Next (days)", "ID", "Review"])
         self._id_index = 3
-        self._tree.setColumnCount(4)
+        self._tree.setColumnCount(5)
         self._tree.setColumnHidden(self._id_index, True)
 
         self._info_label = QLabel("All questions grouped by subject.")
@@ -71,8 +76,24 @@ class ListTab(QWidget):
         layout.addWidget(self._info_label)
         layout.addWidget(self._tree)
 
+        # self._tree.doubleClicked.connect(self._toggle_subject_enabled)
+        # self._tree.setExpandsOnDoubleClick(False)
         self._tree.itemDoubleClicked.connect(self._show_info)
+        self._tree.itemChanged.connect(self.toggle)
+
+        header = self._tree.header()
+        header.setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )  # Question takes remaining space
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+
         self.refresh()
+
+    def _toggle_subject_enabled(self, item: PySide6.QtCore.QModelIndex):
+        subject: str = item.data()
+        toggle_subject(subject)
 
     def _show_info(self, item: QTreeWidgetItem):
         if item.parent() is None:
@@ -230,8 +251,17 @@ class ListTab(QWidget):
         days: int = next_repeat.timetuple().tm_yday - now.timetuple().tm_yday
         if days < 1:
             return "Later Today"
-        
+
         return str(days)
+
+    def toggle(self, item):
+        if item.parent() is not None:
+            return
+
+        subject = item.text(0)
+        is_checked = item.checkState(4) == Qt.CheckState.Checked
+        toggle_subject(subject, set=is_checked)
+        self.subject_modified.emit()
 
     def refresh(self):
         """Rebuild the tree from current questions."""
@@ -240,12 +270,20 @@ class ListTab(QWidget):
         self._tree.clear()
         grouped = self._questions_manager.get_all_grouped_by_subject()
 
-        for subject, questions in grouped.items():
+        def _add_top_level_subject(subject: str):
             subject_item = QTreeWidgetItem([subject])
+            subject_item.setCheckState(
+                4,
+                Qt.CheckState.Checked
+                if is_subject_enabled(subject)
+                else Qt.CheckState.Unchecked,
+            )
             subject_item.setFirstColumnSpanned(True)
-
             self._tree.addTopLevelItem(subject_item)
+            return subject_item
 
+        for subject, questions in grouped.items():
+            subject_item = _add_top_level_subject(subject)
             for question in questions:
                 n_reps: str = str(question["repeated"])
 
@@ -257,13 +295,13 @@ class ListTab(QWidget):
                         n_reps.strip(),
                         next_rep,
                         str(question["id"]),
+                        "",
                     ]
                 )
                 subject_item.addChild(question_item)
 
-        self._tree.expandAll()
-        header = self._tree.header()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setMaximumSectionSize(200)
+        for subject in filter(lambda x: x not in grouped, get_subjects(enabled=False)):
+            _add_top_level_subject(subject)
+
+        # self._tree.expandAll()
+        # header.resizeSection(4, 60)

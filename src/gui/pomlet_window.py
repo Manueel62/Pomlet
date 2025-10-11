@@ -26,7 +26,7 @@ from src.gui.tabs.review_flashcard import ReviewTab
 from src.gui.tabs.timer.timer_tab import TimerTab
 from src.gui.tray import Tray
 from src.questions_manager import QuestionManager
-from src.timer.pomlet_timer import PomletTimer
+from src.gui.timer.pomlet_timer import PomletTimer
 
 
 class PomletWindow(QWidget):
@@ -41,10 +41,10 @@ class PomletWindow(QWidget):
 
         self._questions_manager: QuestionManager = QuestionManager()
         self._to_repeat = self._questions_manager._questions_to_repeat
-        self._add_tab: AddTab = AddTab(self._questions_manager)
-        self._review_tab: ReviewTab = ReviewTab(self._questions_manager)
         self._list_tab: ListTab = ListTab(self._questions_manager)
-        self._timer_tab: TimerTab = TimerTab(self._questions_manager, self._timer, self._tray)
+        self._add_tab: AddTab = AddTab(self._questions_manager, self._list_tab)
+        self._review_tab: ReviewTab = ReviewTab(self._questions_manager, self._list_tab)
+        self._timer_tab: TimerTab = TimerTab(self._questions_manager, self._timer, self._tray, self._list_tab)
 
         self._connect()
         self._build_tabs()

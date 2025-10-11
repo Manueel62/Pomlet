@@ -4,7 +4,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
-from src.frontend.timer.session_type import SessionType
+from src.gui.timer.session_type import SessionType
 
 
 class PomletTimer(QObject):

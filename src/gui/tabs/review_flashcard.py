@@ -31,13 +31,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.tabs.list_flashcard import ListTab
 from src.questions_manager import QuestionManager
 
 
 class ReviewTab(QWidget):
     flashcard_modified: Signal = Signal()
 
-    def __init__(self, questions_manager: QuestionManager):
+    def __init__(self, questions_manager: QuestionManager, list_tab: ListTab):
         super().__init__()
 
         self._questions_manager = questions_manager
@@ -47,6 +48,8 @@ class ReviewTab(QWidget):
         self._stop_review_btn: QPushButton = QPushButton("⏹")
         self._current_question: Optional[Dict[str, Any]] = None
 
+        self._list_tab = list_tab
+        self._list_tab.subject_modified.connect(self._end_review)
         self._modify_btn: QPushButton = QPushButton("✎ Modify")
         self._confirm_btn: QPushButton = QPushButton("✓ Confirm")
         self._subject_label = QLabel()
@@ -187,6 +190,7 @@ class ReviewTab(QWidget):
         self._set_question_label()
         self._correct_btn.setEnabled(False)
         self._wrong_btn.setEnabled(False)
+        self._start_review_btn.setEnabled(self._questions_manager.count() != 0)
 
         # reset question manager generator
         self._questions_manager.reset()

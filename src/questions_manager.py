@@ -22,29 +22,32 @@ import shutil
 from copy import copy
 from datetime import datetime, timedelta
 from pathlib import Path
+from re import sub
 from typing import Any, Dict, List
 
-from src.config import get_config_path
+from src.config import get_config_path, is_subject_enabled
 
 logger = logging.getLogger(__name__)
 
 
 class QuestionManager:
     def __init__(self) -> None:
-        self._questions = self._load_questions()
+        self._questions = self._load(self._get_question_path())
         self._questions_to_repeat = self._get_flashcards_to_repeat()
         self._operations = 0
 
     def _get_question_path(self):
         return get_config_path().parent.joinpath("questions.json")
 
-    def _load_questions(self):
-        question_path: Path = self._get_question_path()
-        if not question_path.exists():
-            with open(question_path, "w", encoding="utf-8") as f:
+    def _get_subject_path(self):
+        return get_config_path().parent.joinpath("subjects.json")
+
+    def _load(self, path: Path):
+        if not path.exists():
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump([], f)
 
-        with open(question_path, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
 
     def _clean_backups(self):
@@ -99,6 +102,7 @@ class QuestionManager:
             if (
                 q["next_repeat"] is not None
                 and datetime.fromisoformat(q["next_repeat"]) <= datetime.now()
+                and is_subject_enabled(q["subject"])
             ):  # None already repeated enough
                 qs.append(q)
 
@@ -144,6 +148,7 @@ class QuestionManager:
             "created": now,
             "repeated": 0,
             "subject": subject,
+            "enabled": True,
         }
         next_repeat = self._get_next_repeat(
             question["repeated"], question["last_repeated"]
@@ -225,7 +230,9 @@ class QuestionManager:
 
     def remove_all_by_subject(self, subject: str):
         logger.debug("Removing all questions for subject: %s", subject)
-        self._questions = list(filter(lambda x: x["subject"] != subject, self._questions))
+        self._questions = list(
+            filter(lambda x: x["subject"] != subject, self._questions)
+        )
         self.save_questions()
 
     def remove(self, question: Dict[str, Any]):

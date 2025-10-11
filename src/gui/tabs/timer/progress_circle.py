@@ -20,7 +20,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QLabel, QWidget
 
-from src.timer.session_type import SessionType
+from src.gui.timer.session_type import SessionType
 
 
 class ProgressCircle(QWidget):
@@ -48,7 +48,7 @@ class ProgressCircle(QWidget):
         self.update()
 
     def set_icon(self, icon: str):
-        print("ICON set to ", icon)        
+        print("ICON set to ", icon)
         self._icon = icon
         self.update()
 
@@ -68,7 +68,7 @@ class ProgressCircle(QWidget):
                 return ""
             case SessionType.LONG_BREAK:
                 return "☕☕"
-            
+
     def update_session_type(self, session_type: SessionType):
         self._session_type = session_type
         self._icon = self._session_type_to_icon()
@@ -92,14 +92,13 @@ class ProgressCircle(QWidget):
         center_x = self.width() // 2
         center_y = self.height() // 2 + 70  # adjust distance below the time
 
-
         painter.setBrush(not_color)
         for i in range(self._n_sessions, 4):
             painter.drawEllipse(
-                (center_x - dot_radius) + int((i - 1.5)*20),
+                (center_x - dot_radius) + int((i - 1.5) * 20),
                 center_y - dot_radius,
                 dot_radius * 2,
-                dot_radius * 2
+                dot_radius * 2,
             )
 
         painter.setPen(QPen(done_color, 8))
@@ -123,12 +122,12 @@ class ProgressCircle(QWidget):
 
         for i in range(0, self._n_sessions):
             painter.drawEllipse(
-                (center_x - dot_radius) + int((i - 1.5)*20),
+                (center_x - dot_radius) + int((i - 1.5) * 20),
                 center_y - dot_radius,
                 dot_radius * 2,
-                dot_radius * 2
+                dot_radius * 2,
             )
-    
+
     @property
     def n_sessions(self):
         return self._n_sessions
