@@ -25,14 +25,21 @@ from dotenv import load_dotenv
 from PySide6.QtWidgets import QApplication
 
 from src.gui.pomlet_window import PomletWindow
+from sync.cloud import download, update
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
     print(dotenv.find_dotenv())
     load_dotenv()
+
+    download()
     app = QApplication(sys.argv)
     window = PomletWindow()
     qdarktheme.setup_theme("auto")
     window.show()
-    sys.exit(app.exec())
+
+    exit_code: int = app.exec()
+    if exit_code == 0:
+        update()
+    sys.exit(exit_code)
